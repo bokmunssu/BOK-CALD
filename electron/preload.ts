@@ -1,6 +1,22 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  microsoftTodo: {
+    status: () => ipcRenderer.invoke('microsoft-status'),
+    login: () => ipcRenderer.invoke('microsoft-login'),
+    cancel: () => ipcRenderer.invoke('microsoft-cancel'),
+    disconnect: () => ipcRenderer.invoke('microsoft-disconnect'),
+    lists: () => ipcRenderer.invoke('microsoft-lists'),
+    selectList: (id: string) => ipcRenderer.invoke('microsoft-select', id),
+    createList: () => ipcRenderer.invoke('microsoft-create-list'),
+    autoSync: (value: boolean) => ipcRenderer.invoke('microsoft-auto', value),
+    sync: () => ipcRenderer.invoke('microsoft-sync'),
+    subscribe: (callback: (value: unknown) => void) => {
+      const listener = (_: unknown, value: unknown) => callback(value);
+      ipcRenderer.on('microsoft-changed', listener);
+      return () => ipcRenderer.removeListener('microsoft-changed', listener);
+    },
+  },
   openWidget: (kind: string, memoId?: string) => ipcRenderer.invoke('widget-open', kind, memoId),
   openCalendar: () => ipcRenderer.invoke('calendar-open'),
   getPinned: () => ipcRenderer.invoke('window-pinned'),
@@ -19,6 +35,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
       const listener = (_: unknown, value: unknown) => callback(value);
       ipcRenderer.on('timer-changed', listener);
       return () => ipcRenderer.removeListener('timer-changed', listener);
+    },
+  },
+  workTime: {
+    get: () => ipcRenderer.invoke('worktime-get'),
+    command: (command: string, value?: unknown) => ipcRenderer.invoke('worktime-command', command, value),
+    subscribe: (callback: (value: unknown) => void) => {
+      const listener = (_: unknown, value: unknown) => callback(value);
+      ipcRenderer.on('worktime-changed', listener);
+      return () => ipcRenderer.removeListener('worktime-changed', listener);
     },
   },
   getAppPath: () => ipcRenderer.invoke("get-app-path"),

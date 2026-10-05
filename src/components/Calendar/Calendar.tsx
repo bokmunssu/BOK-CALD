@@ -18,6 +18,8 @@ import dayjs from "dayjs";
 import React from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./Calendar.module.scss";
+import { workspaceSettingsState } from '../../store/workspace';
+import { koreanHolidayName, hasHolidayData } from '../../utils/holidays';
 
 // CalendarDay 컴포넌트를 메모이제이션
 const CalendarDay = React.memo(
@@ -27,6 +29,7 @@ const CalendarDay = React.memo(
     isSelected,
     isToday,
     isInCurrentMonth,
+    holiday,
     onDateClick,
     onEventClick,
   }: {
@@ -35,6 +38,7 @@ const CalendarDay = React.memo(
     isSelected: boolean;
     isToday: boolean;
     isInCurrentMonth: boolean;
+    holiday: string;
     onDateClick: (date: Date) => void;
     onEventClick: (event: Event, date: Date) => void;
   }) => {
@@ -47,7 +51,8 @@ const CalendarDay = React.memo(
         ${isToday ? styles.today : ""}`}
         onClick={() => onDateClick(date)}
       >
-        <div className={styles.dayNumber}>{date.getDate()}</div>
+        <div className={styles.dayNumber} title={holiday || undefined} style={holiday ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
+        {holiday && <small className={styles.holidayName}>{holiday}</small>}
         <div className={styles.dayContent}>
           {dayEvents.length > 0 && (
             <div className={styles.eventList}>
@@ -84,6 +89,7 @@ const Calendar: React.FC = () => {
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
   const viewMode = useRecoilValue(viewModeState);
+  const settings = useRecoilValue(workspaceSettingsState);
 
   const calendarDays = React.useMemo(
     () => getCalendarDays(currentMonth),
@@ -174,6 +180,7 @@ const Calendar: React.FC = () => {
           </div>
         ))}
       </div>
+      {settings.koreanHolidays && !hasHolidayData(currentMonth.getFullYear()) && <small className={styles.holidayNotice}>이 연도의 공휴일 정보는 아직 준비되지 않았습니다.</small>}
       <div className={styles.calendarGrid}>
         {calendarDays.map((date) => (
           <CalendarDay
@@ -183,6 +190,7 @@ const Calendar: React.FC = () => {
             isSelected={isSameDayAs(date, selectedDate)}
             isToday={isCurrentDay(date)}
             isInCurrentMonth={isCurrentMonth(date, currentMonth)}
+            holiday={settings.koreanHolidays ? koreanHolidayName(date) : ''}
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}
           />

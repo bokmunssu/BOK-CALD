@@ -9,7 +9,7 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class BokForeground {
+public static class TomoForeground {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
@@ -17,11 +17,11 @@ public static class BokForeground {
 '@
 while ($true) {
   try {
-    $handle = [BokForeground]::GetForegroundWindow()
+    $handle = [TomoForeground]::GetForegroundWindow()
     $text = New-Object System.Text.StringBuilder 2048
-    [void][BokForeground]::GetWindowText($handle, $text, $text.Capacity)
+    [void][TomoForeground]::GetWindowText($handle, $text, $text.Capacity)
     [uint32]$foregroundPid = 0
-    [void][BokForeground]::GetWindowThreadProcessId($handle, [ref]$foregroundPid)
+    [void][TomoForeground]::GetWindowThreadProcessId($handle, [ref]$foregroundPid)
     $proc = Get-Process -Id $foregroundPid -ErrorAction Stop
     @{ processName = $proc.ProcessName; title = $text.ToString() } | ConvertTo-Json -Compress
   } catch { [Console]::WriteLine('null') }

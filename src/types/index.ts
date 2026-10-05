@@ -108,6 +108,10 @@ export interface TodoItem {
   completed: boolean;
   important: boolean;
   createdAt: Date;
+  updatedAt?: Date;
+  dueDate?: string;
+  tags?: string[];
+  microsoft?: { accountId: string; listId: string; taskId: string };
 }
 
 export interface MemoEntry {
@@ -117,6 +121,9 @@ export interface MemoEntry {
   content: string;
   createdAt: Date;
   updatedAt: Date;
+  html?: string;
+  image?: string;
+  paperColor?: string;
 }
 
 // 카테고리 (로컬 캘린더)

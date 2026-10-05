@@ -59,7 +59,7 @@ const WindowTitleBar: React.FC = () => {
   return (
     <div className={styles.titleBar}>
       <div className={styles.dragRegion}>
-        <span className={styles.title}>신야 캘린더</span>
+        <span className={styles.title}>TOMO CALENDAR</span>
       </div>
       <div className={styles.windowControls}>
         <button

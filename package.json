@@ -1,11 +1,10 @@
 {
-  "name": "simya-calendar",
-  "version": "1.4.0",
-  "description": "BOK-CALD · SHINYA Calendar 개인 유지보수 버전",
+  "name": "tomo-calendar",
+  "version": "2.0.0",
+  "description": "TOMO CALENDAR · 간결한 캘린더와 독립 위젯",
   "main": "dist-electron/main.js",
   "author": {
-    "name": "bliss",
-    "email": "blissful.y0@gmail.com"
+    "name": "bokmunssu"
   },
   "license": "MIT",
   "scripts": {
@@ -26,7 +25,8 @@
     "dist": "electron-builder",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.electron.json",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:win:portable": "yarn prebuild && electron-builder --win portable --x64"
   },
   "dependencies": {
     "@types/react-datepicker": "^7.0.0",
@@ -47,6 +47,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@hyunbinseo/holidays-kr": "5.2027.2",
     "@playwright/test": "1.56.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
@@ -68,8 +69,10 @@
     "eslint-plugin-react-refresh": "^0.4.6",
     "happy-dom": "^18.0.1",
     "jsdom": "^27.0.0",
+    "png-to-ico": "3.0.1",
     "sass": "^1.72.0",
     "sass-embedded": "^1.93.2",
+    "sharp": "0.34.5",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",
     "vite-plugin-electron": "^0.28.0",
@@ -78,8 +81,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.simya.calendar",
-    "productName": "Shinya Calendar",
+    "appId": "io.github.bokmunssu.tomo.calendar",
+    "productName": "TOMO CALENDAR",
     "directories": {
       "output": "release"
     },
@@ -89,7 +92,7 @@
       "!**/*.{ts,map,spec.js,test.js}"
     ],
     "mac": {
-      "icon": "public/icon.icns",
+      "icon": "public/tomo.icns",
       "category": "public.app-category.productivity",
       "identity": null,
       "hardenedRuntime": true,
@@ -105,8 +108,8 @@
       ]
     },
     "dmg": {
-      "title": "Shinya Calendar 설치",
-      "icon": "public/icon.icns",
+      "title": "TOMO CALENDAR 설치",
+      "icon": "public/tomo.icns",
       "format": "UDZO",
       "background": null,
       "contents": [
@@ -129,7 +132,7 @@
     },
     "afterPack": "scripts/verify-bundle.js",
     "win": {
-      "icon": "public/icon.ico",
+      "icon": "public/tomo.ico",
       "target": [
         {
           "target": "nsis",
@@ -147,11 +150,12 @@
       "deleteAppDataOnUninstall": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Shinya Calendar",
-      "runAfterFinish": true
+      "shortcutName": "TOMO CALENDAR",
+      "runAfterFinish": true,
+      "artifactName": "TOMO-CALENDAR-Setup-${version}-${arch}.${ext}"
     },
     "linux": {
-      "icon": "public/icon.png",
+      "icon": "public/tomo.png",
       "target": [
         {
           "target": "AppImage",
@@ -166,7 +170,8 @@
           ]
         }
       ]
-    }
+    },
+    "artifactName": "TOMO-CALENDAR-${version}-${os}-${arch}.${ext}"
   },
   "repository": {
     "type": "git",

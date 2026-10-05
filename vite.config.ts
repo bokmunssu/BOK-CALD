@@ -1,10 +1,10 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [
     react(),
@@ -12,6 +12,7 @@ export default defineConfig({
       {
         entry: 'electron/main.ts',
         vite: {
+          define: { 'process.env.TOMO_MICROSOFT_CLIENT_ID': JSON.stringify(process.env.TOMO_MICROSOFT_CLIENT_ID || loadEnv(mode, process.cwd(), 'TOMO_').TOMO_MICROSOFT_CLIENT_ID || '') },
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
@@ -57,4 +58,4 @@ export default defineConfig({
       }
     }
   }
-});
+}));

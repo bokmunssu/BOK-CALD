@@ -1,82 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRecoilValue } from 'recoil';
-import { activeDDayState } from '@store/atoms';
-import { differenceInDays } from 'date-fns';
-import { MdCalendarToday, MdSettings } from 'react-icons/md';
+import { activeDDayState, dDaysState } from '../../store/atoms';
+import { differenceInCalendarDays } from 'date-fns';
+import { MdSettings, MdOpenInNew } from 'react-icons/md';
 import DDayModal from './DDayModal';
+import { openWidget } from '../Widgets/WorkspaceControls';
 import styles from './DDayWidget.module.scss';
 
-const DDayWidget: React.FC = () => {
-  const activeDDay = useRecoilValue(activeDDayState);
-  const [daysDiff, setDaysDiff] = useState<number>(0);
-  const [showModal, setShowModal] = useState(false);
-
-  useEffect(() => {
-    if (activeDDay) {
-      const updateDaysDiff = () => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const targetDate = new Date(activeDDay.targetDate);
-        targetDate.setHours(0, 0, 0, 0);
-        const diff = differenceInDays(targetDate, today);
-        setDaysDiff(diff);
-      };
-
-      updateDaysDiff();
-      const interval = setInterval(updateDaysDiff, 1000 * 60 * 60); // 1시간마다 체크
-      return () => clearInterval(interval);
-    }
-  }, [activeDDay]);
-
-  const formatDDay = (days: number) => {
-    if (days === 0) return 'D-DAY';
-    if (days > 0) return `D-${days}`;
-    return `D+${Math.abs(days)}`;
-  };
-
-  const getDDayStyle = (days: number) => {
-    if (days === 0) return styles.dday;
-    if (days > 0 && days <= 7) return styles.soon;
-    if (days > 0) return styles.future;
-    return styles.past;
-  };
-
-  return (
-    <>
-      <div className={styles.ddayWidget}>
-        {activeDDay ? (
-          <div
-            className={`${styles.ddayContent} ${getDDayStyle(daysDiff)}`}
-            onClick={() => setShowModal(true)}
-          >
-            <div className={styles.ddayInfo}>
-              <span className={styles.ddayBadge}>{formatDDay(daysDiff)}</span>
-              <div className={styles.ddayText}>
-                <div className={styles.ddayTitle}>{activeDDay.title}</div>
-                {activeDDay.description && (
-                  <div className={styles.ddayDescription}>
-                    {activeDDay.description}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button className={styles.settingsButton} title="D-Day 관리">
-              <MdSettings />
-            </button>
-          </div>
-        ) : (
-          <div className={styles.emptyDDay} onClick={() => setShowModal(true)}>
-            <span className={styles.addIcon}><MdCalendarToday /></span>
-            <span className={styles.addText}>D-Day 설정하기</span>
-          </div>
-        )}
-      </div>
-
-      {showModal && (
-        <DDayModal onClose={() => setShowModal(false)} />
-      )}
-    </>
-  );
-};
-
-export default DDayWidget;
+export default function DDayWidget() {
+  const active = useRecoilValue(activeDDayState); const days = useRecoilValue(dDaysState);
+  const day = days.find(d => d.id === active?.id) || days[0];
+  const [showModal, setShowModal] = useState(false); const [today, setToday] = useState(new Date());
+  useEffect(() => { const interval = setInterval(() => setToday(new Date()), 30000); return () => clearInterval(interval); }, []);
+  const diff = day ? differenceInCalendarDays(new Date(day.targetDate), today) : 0;
+  return <><div className={styles.ddayWidget}><div className={styles.ddayContent}>
+    {day ? <><span className={styles.ddayBadge}>{diff === 0 ? 'D-DAY' : diff > 0 ? `D-${diff}` : `D+${-diff}`}</span><span className={styles.ddayTitle}>{day.title}</span><button className={styles.settingsButton} title="이 디데이를 위젯으로 열기" aria-label={`${day.title} 위젯 열기`} onClick={() => openWidget('dday',day.id)}><MdOpenInNew /></button></> : <span className={styles.addText}>기억하고 싶은 날을 추가하세요</span>}
+    <button className={styles.settingsButton} title="D-DAY 관리" aria-label="D-DAY 관리" onClick={() => setShowModal(true)}><MdSettings /></button>
+  </div></div>{showModal && <DDayModal onClose={() => setShowModal(false)} />}</>;
+}

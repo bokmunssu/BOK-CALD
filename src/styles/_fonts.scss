@@ -1,5 +1,5 @@
 // Pretendard 웹폰트 (한국어 지원, 가독성 우수)
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+// Bundled app uses installed fonts; no external CDN request.
 
 // 시스템 폰트 스택 정의 (macOS, Windows 호환)
 $font-stack-korean:

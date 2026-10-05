@@ -11,12 +11,13 @@ export const useTheme = () => {
 
   const applyTheme = (theme: Theme) => {
     const root = document.documentElement;
-    const colors = workspace.simple ? {
-      ...theme.colors, primary: '#52616b', secondary: '#697983', accent: '#e9eef1',
-      background: '#f6f7f8', surface: '#ffffff', text: '#283238', textSecondary: '#667780', border: '#dce2e6',
-    } : theme.colors;
+    const colors = theme.colors;
 
     root.style.setProperty('--color-primary', colors.primary);
+    const hex = colors.primary.replace('#', '');
+    const rgb = hex.length === 3 ? hex.split('').map(c => parseInt(c + c, 16)) : [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+    const luminance = rgb.reduce((sum, c, i) => sum + [0.2126, 0.7152, 0.0722][i] * (c / 255 <= 0.04045 ? c / 255 / 12.92 : Math.pow((c / 255 + 0.055) / 1.055, 2.4)), 0);
+    root.style.setProperty('--color-on-primary', luminance > 0.179 ? '#222222' : '#ffffff');
     root.style.setProperty('--color-secondary', colors.secondary);
     root.style.setProperty('--color-accent', colors.accent);
     root.style.setProperty('--color-background', colors.background);
@@ -24,6 +25,8 @@ export const useTheme = () => {
     root.style.setProperty('--color-text', colors.text);
     root.style.setProperty('--color-text-secondary', colors.textSecondary);
     root.style.setProperty('--color-border', colors.border);
+    root.style.setProperty('--color-danger', colors.danger);
+    root.style.setProperty('--color-danger-light', colors.dangerLight);
 
     document.body.style.backgroundColor = colors.background;
     document.body.style.color = colors.text;
