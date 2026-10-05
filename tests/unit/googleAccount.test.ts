@@ -12,6 +12,10 @@ function callback(url: string) { return new Promise<number>(resolve => { get(url
 function setup() { const a = new GoogleAccount(); a.configure({clientId:'test.apps.googleusercontent.com',clientSecret:'desktop-test'}); return a; }
 beforeEach(() => { cache.clear(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 describe('Google desktop OAuth', () => {
+  it('requests Tasks permissions without Calendar permissions for the Tasks login', async () => {
+    const a = setup(); vi.mocked(shell.openExternal).mockImplementation(async address => { const scopes=new URL(address).searchParams.get('scope')!.split(' ');expect(scopes).toContain('https://www.googleapis.com/auth/tasks');expect(scopes.some(s=>s.includes('/calendar'))).toBe(false);a.cancel(); });
+    await expect(a.login(true)).rejects.toThrow('취소');
+  });
   it('reports missing configuration before opening a browser or local listener', async () => {
     const a = new GoogleAccount(); await expect(a.login()).rejects.toThrow('Google 연결 설정이 누락');
     expect(shell.openExternal).not.toHaveBeenCalled();

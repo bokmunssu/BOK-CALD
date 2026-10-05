@@ -31,6 +31,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
   const categories = useRecoilValue(categoriesState);
   // 구글 캘린더 동기화 훅
   const { exportToGoogle, updateGoogleEvent } = useGoogleCalendarSync();
+  const [lunarDate,setLunarDate] = useState(event?.lunarDate);
   const [title, setTitle] = useState(event?.title || "");
   const [categoryId, setCategoryId] = useState(
     event?.categoryId || categories.find((c) => c.isDefault)?.id || categories[0]?.id || ""
@@ -199,6 +200,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
       id: event?.id || uuidv4(),
       title: title.trim(),
       date: startDate,
+      lunarDate,
       endDate: isMultiDay ? endDate : undefined,
       startTime: !isAllDay ? startTime : undefined,
       endTime: !isAllDay ? endTime : undefined,
@@ -228,7 +230,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
 
     // 성공 메시지 표시
     toast.success(
-      event ? "일정가 수정되었습니다" : "일정가 추가되었습니다"
+      event ? "일정이 수정되었습니다" : "일정이 추가되었습니다"
     );
 
     // 구글 캘린더 자동 동기화 (연동되고 autoSync가 켜져 있을 때만)
@@ -318,6 +320,8 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
         <div className={styles.formGroup}>
           <label>{isMultiDay ? "시작 날짜" : "날짜"}</label>
           <CustomDatePicker
+            lunar={lunarDate}
+            onLunarChange={setLunarDate}
             selected={startDate}
             onChange={(date) => date && setStartDate(date)}
             placeholderText="날짜를 선택하세요"

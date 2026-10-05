@@ -5,7 +5,8 @@ import { randomBytes, createHash } from 'node:crypto';
 import type { GoogleCalendarAuth } from '../src/types';
 type Config = { clientId: string; clientSecret: string };
 export class GoogleAccount {
-  private store = new Store({ name: 'google-account' });
+  private store: Store;
+  constructor(name = 'google-account') { this.store = new Store({ name }); }
   private server: Server | null = null;
   private cancelPending: (() => void) | null = null;
   private generation = 0;
@@ -58,7 +59,7 @@ export class GoogleAccount {
   }
   cancel() { if (this.server) { ++this.generation; this.cancelPending?.(); this.server.close(); } }
   disconnect() { this.cancel(); ++this.generation; this.store.delete('tokens'); }
-  async login() {
+  async login(tasks = false) {
     if (!this.info().configured) throw new Error('이 빌드의 Google 연결 설정이 누락되었습니다. 배포자에게 문의해 주세요.');
     if (this.server) throw new Error('진행 중인 로그인을 먼저 마쳐 주세요.');
     const config = this.config(); const generation = ++this.generation;
@@ -83,7 +84,7 @@ export class GoogleAccount {
       });
       const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       url.search = new URLSearchParams({ client_id: config.clientId, redirect_uri: redirect, response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email openid',
+        scope: tasks ? 'https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/userinfo.email openid' : 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email openid',
         access_type: 'offline', prompt: 'consent', state, code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256' }).toString();
       void shell.openExternal(url.toString()).catch(() => this.cancelPending?.());
       const code = await codePromise;

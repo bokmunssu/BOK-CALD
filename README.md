@@ -5,11 +5,18 @@
 
 SHINYA CALENDAR를 기반으로 bokmunssu가 유지보수하는 별도의 캘린더입니다. 원본 제작자의 공식 업데이트가 아니며 MIT 라이선스와 원본 기여를 존중합니다.
 
-## 2.2.1 테스트 빌드
+## 2.3.0 테스트 빌드
+2.3.0은 PR 검토용 빌드이며 아직 공개 릴리즈로 게시하지 않았습니다. 공개 최신 버전은 2.2.1입니다.
+- Google 공휴일 구독을 일정 가져오기에서 제외합니다. 기존에 가져온 공휴일 일정도 화면에서 숨기며 사용자가 직접 만든 일정은 보존합니다.
+- **음력** 체크로 월/주/일 달력 표시를 전환합니다. 일정·D-DAY 날짜 입력에서 음력과 윤달을 선택하고 양력으로 변환해 저장합니다. 반복 규칙은 양력 기준입니다.
+- Google 연결 상태에서 새 카테고리는 기본적으로 Google 캘린더와 연결됩니다. 생성 요청을 합치고 목록 캐시를 갱신합니다. 자동 동기화가 켜져 있으면 일정 카테고리 수정 시 Google 캘린더도 이동합니다.
+- 할 일 연동은 **Google Tasks**로 교체했습니다. 기존 로컬 할 일은 보존하며 Microsoft 자동 동기화는 실행하지 않습니다. 제목·기한 날짜·완료·삭제를 양방향 동기화하고 중요/태그는 로컬에 유지합니다. [사용·배포 안내](docs/GOOGLE_TASKS.md).
+- 최신 버전 안내는 1.4초, 다운로드 완료 안내는 2.5초로 줄였습니다.
+
 - 메모와 할 일 입력은 화면에 즉시 반영하고, 한글 조합이 끝난 뒤 변경된 필드만 저장합니다. 창 종료 전에 마지막 입력의 저장 완료를 기다립니다. 메모별 **글자 크기 10–36px**를 지원합니다.
 - PNG/JPG/GIF/WebP 이미지는 사용자 데이터의 `images` 폴더로 분리하고 동일 이미지는 재사용합니다. 기존 인라인 이미지는 시작 시 이전합니다. 백업할 때 **설정 파일과 images 폴더를 함께** 보관하세요. 이전 버전은 새 이미지 주소를 표시하지 못할 수 있습니다.
 - D-DAY 관리의 **캘린더 표시** 버튼을 각각 켜고 끌 수 있어 여러 날짜를 함께 표시합니다.
-- Google·Microsoft 연동의 고급 API 입력 화면을 제거했습니다. 일반 사용자는 공통 설정이 포함된 배포본에서 각자 로그인하면 됩니다. Google 검토 준비와 미완료 조건은 [인증 안내](docs/GOOGLE_VERIFICATION.md)를 확인하세요.
+- Google 연동의 고급 API 입력 화면을 제거했습니다. 일반 사용자는 공통 설정이 포함된 배포본에서 각자 로그인하면 됩니다. Google 검토 준비와 미완료 조건은 [인증 안내](docs/GOOGLE_VERIFICATION.md)를 확인하세요.
 - **스타일 관리 → 폰트**에서 설치 폰트를 검색·선택합니다. Windows의 한글/영문 이름 차이로 대체 폰트가 나오던 문제를 실제 폰트 파일 로딩으로 개선했습니다. 열린 창과 재실행 후에도 적용됩니다. 해당 폰트에 없는 글자는 다른 폰트로 보완합니다.
 - **스타일 관리 → 배너**에서 표시 여부와 높이 **40–240px**를 조절합니다. 캘린더·할 일·메모 헤더는 가로/세로 위치와 **50–300% 확대/축소**를 지원하며 원본을 보존합니다. 이전에 잘라 저장한 이미지의 원본은 복원하지 못합니다.
 - **커스텀 테마**에서 기준색을 고르면 읽기 쉬운 밝은/어두운 팔레트를 추천합니다. 작은 위젯은 내용을 함께 축소하고 스크롤은 유지하면서 스크롤바를 숨깁니다.
@@ -33,16 +40,16 @@ SHINYA CALENDAR를 기반으로 bokmunssu가 유지보수하는 별도의 캘린
 - Windows **설치형**은 **bokmunssu/BOK-CALD Releases**에서 새 버전을 자동 다운로드하고 완료 후 확인을 받아 재시작·설치합니다. 포터블은 새 EXE 다운로드 안내를 사용합니다. 실제 공개 릴리즈 간 자동 설치는 별도 검증이 필요합니다.
 
 ## Windows에서 실행
-Releases의 **Assets**에서 `TOMO-CALENDAR-Setup-2.2.1-x64.exe`를 실행해 설치합니다. 설치 없이 시험하려면 `TOMO-CALENDAR-2.2.1-win-x64.exe`를 실행합니다. GitHub의 **Source code (zip)**은 소스이며 실행 파일이 아닙니다.
+Releases의 **Assets**에서 `TOMO-CALENDAR-Setup-2.3.0-x64.exe`를 실행해 설치합니다. 설치 없이 시험하려면 `TOMO-CALENDAR-2.3.0-win-x64.exe`를 실행합니다. GitHub의 **Source code (zip)**은 소스이며 실행 파일이 아닙니다.
 
 이 빌드는 기능 확인용입니다. [TESTING.md](TESTING.md)의 검증 범위와 미확인 항목을 확인하세요.
 
 ## 계정 연동과 개인 사용
-Microsoft Store 배포나 유료 서버 없이 로컬 EXE로 사용합니다. **배포자가 공통 OAuth 앱을 한 번 등록하고 빌드에 포함하면 일반 사용자는 각자 계정으로 로그인하면 됩니다.** 2.2.0 로컬 시험 EXE에는 유지보수자의 등록 정보가 포함됩니다. Google의 테스트 사용자/공개·검토 상태와 Microsoft의 조직 정책은 별도 조건입니다. 새 빌드의 실계정 동기화는 별도 확인이 필요합니다.
+Microsoft Store 배포나 유료 서버 없이 로컬 EXE로 사용합니다. **배포자가 공통 OAuth 앱을 한 번 등록하고 빌드에 포함하면 일반 사용자는 각자 계정으로 로그인하면 됩니다.** 2.3.0 로컬 시험 EXE에는 유지보수자의 등록 정보가 포함됩니다. Google의 테스트 사용자/공개·검토 상태는 별도 조건입니다. 새 빌드의 실계정 동기화는 별도 확인이 필요합니다.
 
 [배포 인증·업데이트 운영 안내](docs/DISTRIBUTION_AUTH.md)
 
-[개인 사용·구글 실패 원인·비용 조건](docs/PRIVATE_SYNC.md) · [Microsoft To Do 등록/동기화](docs/MICROSOFT_TODO.md)
+[개인 사용·구글 실패 원인·비용 조건](docs/PRIVATE_SYNC.md) · [Google Tasks 연동](docs/GOOGLE_TASKS.md)
 
 ## 개발자용: 소스에서 빌드
 
@@ -75,7 +82,7 @@ yarn build
 - **Styling**: SCSS Modules
 - **Build**: Vite, electron-builder
 - **Date Handling**: date-fns, rrule
-- **API Integration**: Google Calendar API v3, Microsoft Graph v1.0
+- **API Integration**: Google Calendar API v3, Google Tasks API v1
 
 ---
 
@@ -221,7 +228,7 @@ BOK-CALD/
 ### 주요 원칙
 
 ✅ 앱 데이터는 로컬에 저장되며 계정 연결 시 선택한 서비스와 동기화됩니다
-✅ Google Calendar / Microsoft To Do 데이터는 사용자가 선택한 동기화 목적으로만 사용됩니다
+✅ Google Calendar / Google Tasks 데이터는 사용자가 선택한 동기화 목적으로만 사용됩니다
 ✅ 제3자와 데이터를 공유하지 않습니다
 ✅ 언제든지 계정 연결을 해제하고 데이터를 삭제할 수 있습니다
 
@@ -252,6 +259,6 @@ BOK-CALD/
 ## GitHub에서 실행 파일 배포
 위 Windows 빌드 워크플로를 기본 브랜치에 병합하면, Release를 게시했을 때 설치형과 무설치 EXE를 해당 Release의 Assets에 추가합니다. 소스 ZIP을 실행 파일로 바꾸는 것이 아니라 별도의 EXE 자산을 만드는 방식입니다. Actions의 ‘Windows 실행 파일’을 수동 실행하면 테스트용 EXE를 아티팩트로 받을 수도 있습니다.
 
-Microsoft 앱 등록 후에는 저장소 Settings → Secrets and variables → Actions → Variables에 `TOMO_MICROSOFT_CLIENT_ID`를 설정하세요. Google 로그인은 별도의 TOMO용 OAuth 등록 정보가 필요합니다. 현재 워크플로는 로컬에서만 내용과 빌드 명령을 검증했으며 GitHub 러너에서 실행하지 않았습니다.
+Google 로그인에는 TOMO용 데스크톱 OAuth 공통 설정이 필요합니다. Calendar API와 Tasks API를 사용 설정하고 CI의 Google 클라이언트 ID 변수·데스크톱 client secret을 등록하세요. 사용자 로그인 토큰은 포함하지 않습니다. 2.2.1 공개 릴리즈에서 설치파일 다운로드·해시 확인을 검증했으며 새 버전의 실제 설치는 별도 확인이 필요합니다.
 
 근거: [GitHub 실행 파일 보관](https://github.com/actions/upload-artifact), [릴리즈 자산 업로드](https://cli.github.com/manual/gh_release_upload).

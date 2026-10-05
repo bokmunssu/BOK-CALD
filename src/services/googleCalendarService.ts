@@ -1,6 +1,8 @@
 import { Event, GoogleCalendarAuth, GoogleCalendarEvent } from "@types";
 import { electronStore } from "@utils/electronStore";
 
+import { isHolidayCalendar } from "../utils/googleCalendar";
+
 const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
 type CalendarCache = {
@@ -183,7 +185,7 @@ export class GoogleCalendarService {
     const auth = await this.ensureValidToken();
 
     // 1. 캘린더 목록 가져오기 (캐시 활용)
-    let calendars = await this.listCalendars();
+    let calendars = (await this.listCalendars()).filter(cal => !isHolidayCalendar(cal.id));
 
     // calendarIds가 지정된 경우 필터링
     if (calendarIds && calendarIds.length > 0) {
@@ -424,6 +426,13 @@ export class GoogleCalendarService {
    * @param event 이벤트 데이터
    * @param calendarId 캘린더 ID (기본값: "primary")
    */
+  async moveEvent(eventId: string, source: string, destination: string): Promise<string> {
+    const auth = await this.ensureValidToken();
+    const response = await fetch(`${CALENDAR_API_BASE}/calendars/${encodeURIComponent(source)}/events/${encodeURIComponent(eventId)}/move?destination=${encodeURIComponent(destination)}`, { method: "POST", headers: { Authorization: `Bearer ${auth.access_token}` }, signal: AbortSignal.timeout(20000) });
+    if (!response.ok) throw new Error(`Google 일정 이동 실패 (${response.status}). 대상 캘린더 쓰기 권한을 확인해 주세요.`);
+    return (await response.json()).id;
+  }
+
   async updateEvent(
     googleEventId: string,
     event: Event,
@@ -494,6 +503,7 @@ export class GoogleCalendarService {
     const googleEvent: any = {
       summary: event.title,
       description: event.description || "",
+      extendedProperties: { private: { tomo_local_id: event.id } },
     };
 
     // 종일 이벤트 처리
@@ -631,6 +641,7 @@ export class GoogleCalendarService {
     }
 
     const data = await response.json();
+    this.calendarListCache = { data: null, timestamp: 0 };
     return data.id;
   }
 
@@ -740,6 +751,14 @@ export class GoogleCalendarService {
       return "primary";
     }
 
+    const key = `category:${categoryId}`;
+    if (this.pendingRequests.has(key)) return this.pendingRequests.get(key)!;
+    const request = this.resolveCategoryCalendar(categoryName, categoryDescription);
+    this.pendingRequests.set(key, request);
+    try { return await request; } finally { this.pendingRequests.delete(key); }
+  }
+
+  private async resolveCategoryCalendar(categoryName: string, categoryDescription?: string): Promise<string> {
     // 카테고리 ID로 캘린더 찾기 (summary에서 검색)
     const calendars = await this.listCalendars();
     const existingCalendar = calendars.find(

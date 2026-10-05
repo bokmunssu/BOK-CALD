@@ -10,18 +10,18 @@ interface ElectronAPI {
     auth: () => Promise<import('./types').GoogleCalendarAuth | null>; refresh: () => Promise<import('./types').GoogleCalendarAuth>; disconnect: () => Promise<void>;
   };
   system: { fonts: () => Promise<string[]>; windows: () => Promise<import('./utils/workspace').WindowChoice[]> };
-  microsoftTodo: {
-    configure: (id: string) => Promise<import('./types/microsoft').MicrosoftStatus>;
-    status: () => Promise<import('./types/microsoft').MicrosoftStatus>;
-    login: () => Promise<import('./types/microsoft').MicrosoftStatus>;
+  googleTasks: {
+    resolveCreate: () => Promise<import('./types/googleTasks').GoogleTasksStatus>;
+    status: () => Promise<import('./types/googleTasks').GoogleTasksStatus>;
+    login: () => Promise<import('./types/googleTasks').GoogleTasksStatus>;
     cancel: () => Promise<void>;
-    disconnect: () => Promise<import('./types/microsoft').MicrosoftStatus>;
-    lists: () => Promise<import('./types/microsoft').MicrosoftList[]>;
-    selectList: (id: string) => Promise<import('./types/microsoft').MicrosoftStatus>;
-    createList: () => Promise<import('./types/microsoft').MicrosoftList>;
-    autoSync: (value: boolean) => Promise<import('./types/microsoft').MicrosoftStatus>;
-    sync: () => Promise<import('./types/microsoft').MicrosoftStatus>;
-    subscribe: (callback: (value: import('./types/microsoft').MicrosoftStatus) => void) => () => void;
+    disconnect: () => Promise<import('./types/googleTasks').GoogleTasksStatus>;
+    lists: () => Promise<import('./types/googleTasks').GoogleTaskList[]>;
+    selectList: (id: string) => Promise<import('./types/googleTasks').GoogleTasksStatus>;
+    createList: () => Promise<import('./types/googleTasks').GoogleTaskList>;
+    autoSync: (value: boolean) => Promise<import('./types/googleTasks').GoogleTasksStatus>;
+    sync: () => Promise<import('./types/googleTasks').GoogleTasksStatus>;
+    subscribe: (callback: (value: import('./types/googleTasks').GoogleTasksStatus) => void) => () => void;
   };
   workTime: {
     get: () => Promise<import('./utils/worktime').WorkTimeSnapshot>;

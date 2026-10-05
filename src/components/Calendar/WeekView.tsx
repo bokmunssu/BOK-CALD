@@ -18,6 +18,7 @@ import {
 } from "date-fns";
 import React from "react";
 import { workspaceSettingsState } from '../../store/workspace';
+import { lunarLabel } from "../../utils/lunar";
 import { koreanHolidayName } from '../../utils/holidays';
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./WeekView.module.scss";
@@ -213,6 +214,7 @@ const WeekView: React.FC = () => {
             >
               <div className={styles.dayName}>{weekDayNames[index]}</div>
               <div className={styles.dayNumber} title={settings.koreanHolidays ? koreanHolidayName(date) : undefined} style={settings.koreanHolidays && koreanHolidayName(date) ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
+              {settings.lunarVisible && <small>{lunarLabel(date)}</small>}
             </div>
           );
         })}

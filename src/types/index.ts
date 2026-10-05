@@ -1,5 +1,6 @@
 export interface Event {
   id: string;
+  lunarDate?: import("../utils/lunar").LunarDate;
   baseEventId?: string; // Original event ID for recurring instances
   title: string;
   date: Date; // Start date for multi-day events
@@ -56,6 +57,7 @@ export interface CalendarDate {
 }
 
 export interface DDay {
+  lunarDate?: import('../utils/lunar').LunarDate;
   id: string;
   title: string;
   description?: string;
@@ -111,6 +113,7 @@ export interface TodoItem {
   updatedAt?: Date;
   dueDate?: string;
   tags?: string[];
+  googleTasks?: { accountId: string; listId: string; taskId: string };
   microsoft?: { accountId: string; listId: string; taskId: string };
 }
 

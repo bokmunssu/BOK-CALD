@@ -7,7 +7,7 @@ import os from "os";
 import Store from "electron-store";
 import { registerUpdater } from './updater';
 import { registerGoogleAccount } from './googleAccount';
-import { registerMicrosoftTodo } from './microsoftTodo';
+import { registerGoogleTasks } from './googleTasks';
 import { registerSystemPreferences } from './systemPreferences';
 import { registerWidgets } from './widgets';
 import { mergeItems, applyCollectionPatch, type CollectionPatch } from '../src/utils/workspace';
@@ -137,7 +137,7 @@ app.whenReady().then(() => {
   registerUpdater();
   registerGoogleAccount();
   registerSystemPreferences();
-  registerMicrosoftTodo(store, broadcastStore);
+  registerGoogleTasks(store, broadcastStore);
   registerWidgets(store, () => {
     if (!mainWindow) createWindow();
     else { mainWindow.show(); mainWindow.restore(); mainWindow.focus(); }
