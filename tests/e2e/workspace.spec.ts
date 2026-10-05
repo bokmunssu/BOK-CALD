@@ -6,6 +6,27 @@ import { randomBytes } from 'node:crypto';
 
 let app: ElectronApplication;
 let calendar: Page;
+
+test('lunar display is optional and a lunar schedule stores its converted solar date', async ({}, info) => {
+  await calendar.getByLabel('음력 표시', {exact:true}).check();
+  await expect(calendar.locator('[class*="calendarDay_"]').first().getByText(/음력/)).toBeVisible();
+  await calendar.reload();await expect(calendar.getByLabel('음력 표시', {exact:true})).toBeChecked();
+  await calendar.getByRole('button',{name:'+ 일정 추가',exact:true}).click();
+  await calendar.getByLabel('일정 제목').fill('음력 설날 시험');
+  await calendar.getByLabel('음력 날짜 선택',{exact:true}).click();
+  await calendar.getByLabel('음력 연도').fill('2026');await calendar.getByLabel('음력 월').selectOption('1');await calendar.getByLabel('음력 일').selectOption('1');
+  await expect(calendar.getByText(/양력 2026.2.17/)).toBeVisible();
+  await calendar.screenshot({path:info.outputPath('lunar-date-input.png')});
+  await calendar.getByRole('button',{name:'저장',exact:true}).click();
+  await expect.poll(async()=>calendar.evaluate(async()=>{const items=await window.electronAPI.store.get('events');return items.find((e:any)=>e.title==='음력 설날 시험')?.lunarDate;})).toMatchObject({year:2026,month:1,day:1});
+  const saved=await calendar.evaluate(async()=>{const e=(await window.electronAPI.store.get('events')).find((e:any)=>e.title==='음력 설날 시험');const d=new Date(e.date);return [d.getFullYear(),d.getMonth()+1,d.getDate()];});expect(saved).toEqual([2026,2,17]);
+  await calendar.getByLabel('음력 표시',{exact:true}).uncheck();await expect(calendar.locator('[class*="calendarDay_"]').getByText(/음력/)).toHaveCount(0);
+});
+
+test('stored holiday subscriptions are hidden while similarly named user schedules remain', async () => {
+  await calendar.evaluate(async()=>{const date=new Date();await window.electronAPI.store.set('events',[{id:'holiday',title:'가져온 공휴일 시험',date,color:'#ff0000',googleCalendarId:'ko.south_korea#holiday@group.v.calendar.google.com'},{id:'user',title:'내 공휴일 약속',date,color:'#888888'}]);});
+  await calendar.reload();await expect(calendar.getByText('가져온 공휴일 시험',{exact:true})).toHaveCount(0);await expect(calendar.getByText('내 공휴일 약속',{exact:true}).first()).toBeVisible();
+});
 test.beforeEach(async ({}, info) => {
   const data = path.resolve(info.outputPath('user-data'));
   fs.mkdirSync(data, { recursive: true });
@@ -173,8 +194,8 @@ test('circular timer and login settings use compact controls', async ({}, info) 
   await todo.getByLabel('새 할 일').fill('디자인 확인');
   await todo.getByRole('button', { name: '추가', exact: true }).click();
   await todo.screenshot({ path: info.outputPath('todo-widget.png') });
-  await todo.getByRole('button', { name: 'Microsoft To Do 연동' }).click();
-  await expect(todo.getByRole('heading', { name: 'Microsoft To Do' })).toBeVisible();
+  await todo.getByRole('button', { name: 'Google Tasks 연동' }).click();
+  await expect(todo.getByRole('heading', { name: 'Google Tasks' })).toBeVisible();
   await expect(todo.getByLabel('Microsoft 개인 앱 ID')).not.toBeVisible();
 });
 test('work time records only its selected active window and stops on pause', async ({}, info) => {
@@ -234,12 +255,12 @@ test('Google modal covers the compact toolbar and explains missing configuration
 });
 
 test('a fresh external profile has common login configuration and no advanced fields', async () => {
-  const config = await calendar.evaluate(async () => ({ google: await window.electronAPI.googleAccount.info(), microsoft: await window.electronAPI.microsoftTodo.status() }));
+  const config = await calendar.evaluate(async () => ({ google: await window.electronAPI.googleAccount.info(), tasks: await window.electronAPI.googleTasks.status() }));
   expect(config.google.personal).toBe(false);
   expect(config.google.configured).toBe(true);
-  expect(config.microsoft.configured).toBe(true);
-  const todo = await openWidget('todo'); await todo.getByLabel('Microsoft To Do 연동').click();
-  await expect(todo.getByRole('button',{name:'Microsoft 계정으로 로그인'})).toBeEnabled();
+  expect(config.tasks.configured).toBe(true);
+  const todo = await openWidget('todo'); await todo.getByLabel('Google Tasks 연동').click();
+  await expect(todo.getByRole('button',{name:'Google 계정으로 로그인'})).toBeEnabled();
   await expect(todo.getByText('고급 연결 설정')).toHaveCount(0);
   await expect(todo.getByLabel('Microsoft 개인 앱 ID')).toHaveCount(0);
 });

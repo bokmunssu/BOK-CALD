@@ -32,9 +32,13 @@ Google은 홈페이지/개인정보처리방침 도메인의 소유권 확인을
 | --- | --- |
 | `calendar.events` | 사용자가 선택한 기존 캘린더의 일정 제목·시간·반복을 TOMO에서 표시하고 편집 내용을 양방향 동기화합니다. 읽기 전용 권한으로는 사용자가 요청한 생성·수정·삭제를 반영할 수 없습니다. 사용자의 계정 ACL이 허용한 범위를 넘지 않습니다. |
 | `calendar.calendarlist.readonly` | 구독한 캘린더의 이름·색·식별자를 보여주어 사용자가 가져올 대상을 선택하게 합니다. 구독 목록 수정이나 공유 권한 관리는 하지 않습니다. |
+| `tasks` | Google Tasks 로그인에서 선택한 목록의 할 일 제목·기한·완료·삭제를 양방향 동기화합니다. Calendar 로그인에는 이 범위를 추가하지 않습니다. |
 | `calendar.app.created` | 사용자가 TOMO용 보조 캘린더 생성을 선택하면 생성하고 그 캘린더의 일정에 접근합니다. 임의의 기존 캘린더 전체 속성/공유 권한을 관리하는 범위를 요청하지 않습니다. |
 | `userinfo.email`, `openid` | 로그인한 Google 계정을 식별하고 연동 창에 계정 이메일을 표시합니다. 다른 계정의 정보를 요청하지 않습니다. |
 
 일정 데이터는 선택한 동기화 기능을 위해 기기와 Google API 사이에서 사용합니다. 판매·광고 타기팅·범용 AI 학습에 사용하지 않으며 유지보수자 서버로 자동 전송하지 않습니다. 개인정보처리방침에는 로컬 보관·삭제·해제·외부 API·업데이트 요청을 명시했습니다. 이 사실관계를 실제 프로그램 동작과 다시 비교한 뒤 제출하세요.
 
 공식 기준: [홈페이지 요건](https://support.google.com/cloud/answer/13807376), [브랜드 검토](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification), [운영 준비](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance), [Calendar 권한 선택](https://developers.google.com/workspace/calendar/api/auth).
+
+## 2.3.0 Google Tasks 추가
+기존 프로젝트에서 Google Tasks API 사용 설정됨을 2026-10-05 콘솔에서 확인했습니다. Tasks 권한의 데이터 액세스/심사 범위를 추가하고 동기화 시연 영상을 포함해야 합니다. API 활성화는 심사 승인이 아닙니다. [Google Tasks 설정](GOOGLE_TASKS.md).

@@ -1,3 +1,4 @@
+import { isHolidayCalendar } from "../utils/googleCalendar";
 import { atom, selector } from 'recoil';
 import { sharedEffect, restoreDates } from './sharedEffect';
 import { Event, Theme, DDay, GoogleCalendarSyncState, TodoItem, MemoEntry, Category } from '@types';
@@ -96,7 +97,7 @@ export const eventsState = atom<Event[]>({
       electronStore.get('events').then(savedEvents => {
         if (savedEvents && Array.isArray(savedEvents)) {
           // Date 문자열을 Date 객체로 변환
-          const eventsWithDates = (savedEvents as any[]).map(event => ({
+          const eventsWithDates = (savedEvents as any[]).filter(event => !isHolidayCalendar(event.googleCalendarId)).map(event => ({
             ...event,
             date: new Date(event.date),
             endDate: event.endDate ? new Date(event.endDate) : undefined,

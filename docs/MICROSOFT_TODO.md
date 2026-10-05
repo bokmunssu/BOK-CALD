@@ -1,3 +1,5 @@
+> **2.3.0 변경:** 할 일 연동은 Google Tasks로 교체했습니다. 이 문서의 Microsoft 내용은 이전 버전/자체 개발 참고용이며 현재 앱에서 Microsoft 자동 동기화는 실행하지 않습니다. [현재 사용 안내](GOOGLE_TASKS.md).
+
 # Microsoft To Do 로그인·동기화
 일반 사용자는 **할 일 → Microsoft To Do 연동 → Microsoft 계정으로 로그인**을 누르고 목록을 선택합니다. 등록 ID가 포함된 빌드는 사용자별 API 발급이나 키 입력이 없습니다. 개인 사용도 Microsoft Store 배포는 필요하지 않으며, 비용/계정 조건은 [개인 연동 안내](PRIVATE_SYNC.md)를 확인하세요.
 

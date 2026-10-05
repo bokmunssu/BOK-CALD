@@ -15,6 +15,7 @@ export default function WorkspaceControls() {
   const [settings, setSettings] = useRecoilState(workspaceSettingsState);
   return <div className={styles.workspaceBar}>
     <PinButton /><label className={styles.compactToggle}><input type="checkbox" checked={settings.simple} onChange={e => setSettings(s => ({ ...s, simple: e.target.checked }))} />심플 모드</label>
+    <label className={styles.compactToggle}><input aria-label="음력 표시" type="checkbox" checked={settings.lunarVisible} onChange={e => setSettings(s => ({ ...s, lunarVisible: e.target.checked }))} />음력</label>
     <label className={styles.compactToggle} title="한국 공휴일 날짜를 빨간색으로 표시"><input aria-label="한국 공휴일 표시" type="checkbox" checked={settings.koreanHolidays} onChange={e => setSettings(s => ({ ...s, koreanHolidays: e.target.checked }))} /><FiSun />공휴일</label>
     <span className={styles.spacer} /><button onClick={() => openWidget('todo')}><FiCheckSquare />할 일</button>
     <button onClick={() => openWidget('pomodoro')}><FiClock />뽀모도로</button><button onClick={() => openWidget('worktime')}><FiClock />작업시간</button>

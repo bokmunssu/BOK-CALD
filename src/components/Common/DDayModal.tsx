@@ -25,6 +25,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [targetDate, setTargetDate] = useState<Date | null>(null);
+  const [lunarDate,setLunarDate] = useState<DDay['lunarDate']>();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +37,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
       title: title.trim(),
       description: description.trim(),
       targetDate: targetDate,
+      lunarDate,
       isActive: false,
       createdAt: editingDDay?.createdAt || new Date()
     };
@@ -57,6 +59,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
     setTitle('');
     setDescription('');
     setTargetDate(null);
+    setLunarDate(undefined);
     setShowForm(false);
     setEditingDDay(null);
   };
@@ -66,6 +69,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
     setTitle(dday.title);
     setDescription(dday.description || '');
     setTargetDate(new Date(dday.targetDate));
+    setLunarDate(dday.lunarDate);
     setShowForm(true);
   };
 
@@ -129,6 +133,8 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
                 <label>날짜</label>
                 <CustomDatePicker
                   selected={targetDate}
+                  lunar={lunarDate}
+                  onLunarChange={setLunarDate}
                   onChange={(date) => setTargetDate(date)}
                   placeholderText="D-Day 날짜를 선택하세요"
                 />

@@ -3315,6 +3315,11 @@ keyv@^4.0.0, keyv@^4.5.3:
   dependencies:
     json-buffer "3.0.1"
 
+korean-lunar-calendar@0.3.6:
+  version "0.3.6"
+  resolved "https://registry.yarnpkg.com/korean-lunar-calendar/-/korean-lunar-calendar-0.3.6.tgz#d8efe2f741bcfccd80143b3ed3dbf72a0771f7ab"
+  integrity sha512-9jpZUH8ph6GsBgIGy8al6z6OfG6TdSIDB99Zj73B35ohtG12EFj3CGE5NzjBsXFiJUUjEr08/XCjfh+flXZVPw==
+
 lazy-val@^1.0.4, lazy-val@^1.0.5:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/lazy-val/-/lazy-val-1.0.5.tgz#6cf3b9f5bc31cee7ee3e369c0832b7583dcd923d"

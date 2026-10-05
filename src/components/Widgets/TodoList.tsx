@@ -11,7 +11,7 @@ import type { TodoItem } from '../../types';
 import { readImage } from '../../utils/memo';
 import { openWidget } from './WorkspaceControls';
 import ImageHeader from '../Common/ImageHeader';
-import MicrosoftPanel from './MicrosoftPanel';
+import GoogleTasksPanel from './GoogleTasksPanel';
 import styles from './Widgets.module.scss';
 
 export default function TodoList({ date }: { date?: Date }) {
@@ -29,7 +29,7 @@ export default function TodoList({ date }: { date?: Date }) {
   return <div className={styles.todoList}>
     {appearance.image && <ImageHeader image={appearance.image} placement={appearance} label="할 일" onChange={p => setAppearance(a => ({ ...a, ...p }))} onRemove={() => setAppearance(a => ({ ...a, image: '' }))} />}
     <div className={styles.sectionHeading}><strong>할 일</strong><small>{visible.filter(t => t.completed).length}/{visible.length} 완료</small><span className={styles.spacer} />
-      <button className={styles.iconButton} title="Microsoft To Do 연동" aria-label="Microsoft To Do 연동" onClick={() => setSyncOpen(true)}><span className={styles.microsoftMark}>✓</span></button>
+      <button className={styles.iconButton} title="Google Tasks 연동" aria-label="Google Tasks 연동" onClick={() => setSyncOpen(true)}><span className={styles.microsoftMark}>✓</span></button>
       <button className={styles.iconButton} title="배너 이미지 추가" aria-label="할 일 이미지 추가" onClick={() => upload.current?.click()}><FiImage /></button>
       {date && <button className={styles.iconButton} title="할 일 위젯 열기" aria-label="할 일 위젯 열기" onClick={() => openWidget('todo')}><FiExternalLink /></button>}
     </div>
@@ -44,6 +44,6 @@ export default function TodoList({ date }: { date?: Date }) {
     {!visible.length && <div className={styles.emptyState}><strong>{search ? '검색 결과가 없어요' : '조금씩, 하나씩 완료해 보세요'}</strong><span>위에서 오늘 할 일을 추가해 주세요.</span></div>}
     <div className={styles.todoRows}>{visible.map(todo => <TodoRow key={todo.id} todo={todo} update={update} remove={remove} />)}</div>
     <input ref={upload} type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif" onChange={async e => { const file = e.target.files?.[0]; if (!file) return; try { setAppearance({ image: await readImage(file), positionX: 50, positionY: 50, zoom: 1 }); } catch (err) { toast.error(String(err)); } e.target.value = ''; }} />
-    {syncOpen && <MicrosoftPanel onClose={() => setSyncOpen(false)} />}
+    {syncOpen && <GoogleTasksPanel onClose={() => setSyncOpen(false)} />}
   </div>;
 }

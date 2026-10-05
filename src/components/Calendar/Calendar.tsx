@@ -19,6 +19,7 @@ import React from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./Calendar.module.scss";
 import { workspaceSettingsState } from '../../store/workspace';
+import { lunarLabel } from "../../utils/lunar";
 import { koreanHolidayName, hasHolidayData } from '../../utils/holidays';
 
 // CalendarDay 컴포넌트를 메모이제이션
@@ -30,6 +31,7 @@ const CalendarDay = React.memo(
     isToday,
     isInCurrentMonth,
     holiday,
+    lunar,
     onDateClick,
     onEventClick,
   }: {
@@ -39,6 +41,7 @@ const CalendarDay = React.memo(
     isToday: boolean;
     isInCurrentMonth: boolean;
     holiday: string;
+    lunar: string;
     onDateClick: (date: Date) => void;
     onEventClick: (event: Event, date: Date) => void;
   }) => {
@@ -52,6 +55,7 @@ const CalendarDay = React.memo(
         onClick={() => onDateClick(date)}
       >
         <div className={styles.dayNumber} title={holiday || undefined} style={holiday ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
+        {lunar && <small style={{fontSize:9,opacity:0.65}}>{lunar}</small>}
         {holiday && <small className={styles.holidayName}>{holiday}</small>}
         <div className={styles.dayContent}>
           {dayEvents.length > 0 && (
@@ -190,6 +194,7 @@ const Calendar: React.FC = () => {
             isSelected={isSameDayAs(date, selectedDate)}
             isToday={isCurrentDay(date)}
             isInCurrentMonth={isCurrentMonth(date, currentMonth)}
+            lunar={settings.lunarVisible ? lunarLabel(date) : ""}
             holiday={settings.koreanHolidays ? koreanHolidayName(date) : ''}
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}

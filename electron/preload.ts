@@ -11,21 +11,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
     subscribe: (callback: (value: unknown) => void) => { const listener = (_: unknown, value: unknown) => callback(value); ipcRenderer.on('update-changed', listener); return () => ipcRenderer.removeListener('update-changed', listener); } },
 
   system: { fonts: () => ipcRenderer.invoke('system-fonts'), windows: () => ipcRenderer.invoke('system-windows') },
-  microsoftTodo: {
-    status: () => ipcRenderer.invoke('microsoft-status'),
-    configure: (id: string) => ipcRenderer.invoke('microsoft-configure', id),
-    login: () => ipcRenderer.invoke('microsoft-login'),
-    cancel: () => ipcRenderer.invoke('microsoft-cancel'),
-    disconnect: () => ipcRenderer.invoke('microsoft-disconnect'),
-    lists: () => ipcRenderer.invoke('microsoft-lists'),
-    selectList: (id: string) => ipcRenderer.invoke('microsoft-select', id),
-    createList: () => ipcRenderer.invoke('microsoft-create-list'),
-    autoSync: (value: boolean) => ipcRenderer.invoke('microsoft-auto', value),
-    sync: () => ipcRenderer.invoke('microsoft-sync'),
+  googleTasks: {
+    status: () => ipcRenderer.invoke('googleTasks-status'),
+    resolveCreate: () => ipcRenderer.invoke('googleTasks-resolve-create'),
+    login: () => ipcRenderer.invoke('googleTasks-login'),
+    cancel: () => ipcRenderer.invoke('googleTasks-cancel'),
+    disconnect: () => ipcRenderer.invoke('googleTasks-disconnect'),
+    lists: () => ipcRenderer.invoke('googleTasks-lists'),
+    selectList: (id: string) => ipcRenderer.invoke('googleTasks-select', id),
+    createList: () => ipcRenderer.invoke('googleTasks-create-list'),
+    autoSync: (value: boolean) => ipcRenderer.invoke('googleTasks-auto', value),
+    sync: () => ipcRenderer.invoke('googleTasks-sync'),
     subscribe: (callback: (value: unknown) => void) => {
       const listener = (_: unknown, value: unknown) => callback(value);
-      ipcRenderer.on('microsoft-changed', listener);
-      return () => ipcRenderer.removeListener('microsoft-changed', listener);
+      ipcRenderer.on('googleTasks-changed', listener);
+      return () => ipcRenderer.removeListener('googleTasks-changed', listener);
     },
   },
   openWidget: (kind: string, memoId?: string) => ipcRenderer.invoke('widget-open', kind, memoId),

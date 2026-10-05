@@ -22,7 +22,7 @@ import { electronStore } from "@utils/electronStore";
 import { getCurrentVersion, checkForUpdates } from "@utils/version";
 import { useGoogleCalendarSync } from "@hooks/useGoogleCalendarSync";
 import styles from "./Header.module.scss";
-import MicrosoftPanel from '../Widgets/MicrosoftPanel';
+import GoogleTasksPanel from '../Widgets/GoogleTasksPanel';
 
 // Lazy load Google Calendar component
 const GoogleCalendarSyncPanel = React.lazy(() =>
@@ -53,7 +53,7 @@ const Header: React.FC = () => {
   const syncState = useRecoilValue(googleCalendarSyncState);
   const { importFromGoogle, isSyncing } = useGoogleCalendarSync();
   const [showGoogleCalendar, setShowGoogleCalendar] = useState(false);
-  const [showMicrosoft, setShowMicrosoft] = useState(false);
+  const [showGoogleTasks, setShowGoogleTasks] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showStylingManager, setShowStylingManager] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -84,7 +84,7 @@ const Header: React.FC = () => {
   useEffect(() => window.electronAPI?.updater?.subscribe(update => {
     setHasUpdate(update.status === 'downloading' || update.status === 'ready');
     setUpdateLabel(update.status === 'ready' ? '업데이트 설치' : update.status === 'downloading' ? `${update.percent ?? 0}%` : '');
-    if (update.status === 'ready') toast.success('새 버전 다운로드 완료. 상단 버전을 눌러 재시작·설치하세요.', { duration: 6000 });
+    if (update.status === 'ready') toast.success('새 버전 다운로드 완료. 상단 버전을 눌러 재시작·설치하세요.', { duration: 2500 });
   }), []);
 
   // 메뉴 외부 클릭 시 닫기
@@ -188,7 +188,7 @@ const Header: React.FC = () => {
           return;
         }
         if (update.status === 'downloading') { toast.success(`v${update.version} 다운로드 중 · ${update.percent ?? 0}%`); return; }
-        if (update.status === 'current') { toast.success('최신 버전을 사용 중입니다.'); return; }
+        if (update.status === 'current') { toast.success('최신 버전을 사용 중입니다.', { duration: 1400 }); return; }
         if (update.status === 'error') { toast.error(update.message || '업데이트 확인 실패'); return; }
       }
       const updateInfo = await checkForUpdates();
@@ -214,7 +214,7 @@ const Header: React.FC = () => {
       } else {
         toast.success(
           `최신 버전을 사용 중입니다.\n현재 버전: ${updateInfo.currentVersion}`,
-          { duration: 3000 }
+          { duration: 1400 }
         );
       }
     } catch (error) {
@@ -369,7 +369,7 @@ const Header: React.FC = () => {
                 <FcGoogle size={18} />
                 구글 캘린더
               </button>
-              <button onClick={() => { setShowMicrosoft(true); setShowMenu(false); }}>✓ Microsoft To Do</button>
+              <button onClick={() => { setShowGoogleTasks(true); setShowMenu(false); }}>✓ Google Tasks</button>
 
 
               <button
@@ -385,7 +385,7 @@ const Header: React.FC = () => {
           )}
         </div>
       </div>
-{showMicrosoft && <MicrosoftPanel onClose={() => setShowMicrosoft(false)} />}
+{showGoogleTasks && <GoogleTasksPanel onClose={() => setShowGoogleTasks(false)} />}
       {showCategoryManager && (
         <React.Suspense fallback={<div>로딩 중...</div>}>
           <CategoryManager

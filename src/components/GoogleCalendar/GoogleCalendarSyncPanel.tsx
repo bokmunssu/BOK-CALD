@@ -9,6 +9,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FiDownload, FiUpload, FiRefreshCw, FiArrowLeft, FiCheck, FiLogOut } from "react-icons/fi";
 import styles from "./GoogleCalendarSyncPanel.module.scss";
 import toast from "react-hot-toast";
+import { isHolidayCalendar } from "../../utils/googleCalendar";
 
 type GoogleCalendar = {
   id: string;
@@ -162,7 +163,7 @@ export const GoogleCalendarSyncPanel: React.FC<
     setIsLoadingCalendars(true);
     try {
       // 캐시 사용 (forceRefresh = false)
-      const calendars = await googleCalendarService.listCalendars(false);
+      const calendars = (await googleCalendarService.listCalendars(false)).filter(c => !isHolidayCalendar(c.id));
       setAvailableCalendars(calendars);
 
       // 저장된 선택 목록이 있으면 사용, 없으면 모든 캘린더 선택

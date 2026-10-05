@@ -21,6 +21,7 @@ import {
 import { ko } from "date-fns/locale";
 import styles from "./DayView.module.scss";
 import { workspaceSettingsState } from '../../store/workspace';
+import { lunarLabel } from "../../utils/lunar";
 import { koreanHolidayName } from '../../utils/holidays';
 
 const DayView: React.FC = () => {
@@ -151,6 +152,7 @@ const DayView: React.FC = () => {
     <div className={styles.dayView}>
       <div className={styles.dayHeader}>
         <h2 className={styles.dateTitle} title={settings.koreanHolidays ? koreanHolidayName(selectedDate) : undefined} style={settings.koreanHolidays && koreanHolidayName(selectedDate) ? { color: '#d45d6a' } : undefined}>{formatDate(selectedDate, 'yyyy년 M월 d일 EEEE')}</h2>
+        {settings.lunarVisible && <small>{lunarLabel(selectedDate)}</small>}
       </div>
 
       <div className={styles.timeGrid}>

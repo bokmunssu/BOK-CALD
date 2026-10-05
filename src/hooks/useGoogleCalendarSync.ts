@@ -20,6 +20,7 @@ type GoogleCalendarEvent = OriginalGoogleCalendarEvent & {
     [key: string]: any;
   };
 };
+import { isHolidayCalendar } from "../utils/googleCalendar";
 import { electronStore } from "@utils/electronStore";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -142,7 +143,7 @@ export const useGoogleCalendarSync = () => {
 
         // 1단계: 선택된 캘린더를 먼저 카테고리로 생성 (이벤트가 없는 캘린더 대응)
         for (const calendarInfo of selectedCalendarsInfo) {
-          if (!selectedCalendarIds.includes(calendarInfo.id)) {
+          if (isHolidayCalendar(calendarInfo.id) || !selectedCalendarIds.includes(calendarInfo.id)) {
             continue; // 선택되지 않은 캘린더는 건너뛰기
           }
 
@@ -237,7 +238,7 @@ export const useGoogleCalendarSync = () => {
         const deletedEventIdsSet = new Set(deletedEventIds);
 
         // 기존 로컬 이벤트 맵: id -> event, googleId -> event
-        const existingEventsMapById = new Map(events.map((e) => [e.id, e]));
+        const existingEventsMapById = new Map(events.filter(e => !isHolidayCalendar(e.googleCalendarId)).map((e) => [e.id, e]));
         const existingEventsMapByGoogleId = new Map(
           events.filter((e) => e.googleEventId).map((e) => [String(e.googleEventId), e])
         );
@@ -402,6 +403,7 @@ export const useGoogleCalendarSync = () => {
           }
         }
 
+        if (category && !category.isDefault && !category.googleCalendarId) setCategories(items => items.map(c => c.id === category.id ? { ...c, googleCalendarId: calendarId } : c));
         const googleEventId = await googleCalendarService.createEvent(
           event,
           calendarId
@@ -416,7 +418,7 @@ export const useGoogleCalendarSync = () => {
         setGlobalLoading(false);
       }
     },
-    [syncState, categories, setGlobalLoading]
+    [syncState, categories, setGlobalLoading, setCategories]
   );
 
   /**
@@ -507,22 +509,28 @@ export const useGoogleCalendarSync = () => {
 
       setGlobalLoading(true);
       try {
-        await googleCalendarService.updateEvent(
-          event.googleEventId,
-          event,
-          event.googleCalendarId
-        );
+        const category = categories.find(c => c.id === event.categoryId);
+        const destination = category?.googleCalendarId || (category && !category.isDefault
+          ? await googleCalendarService.getOrCreateCalendarForCategory(category.id, category.name, category.description) : "primary");
+        let id = event.googleEventId;
+        if (destination !== event.googleCalendarId) {
+          id = await googleCalendarService.moveEvent(id, event.googleCalendarId, destination);
+          // Persist the move before the content update so a retry uses the new location.
+          setEvents(items => items.map(item => item.id === event.id ? { ...item, googleEventId: id, googleCalendarId: destination } : item));
+        }
+        await googleCalendarService.updateEvent(id, event, destination);
+        if (category && !category.googleCalendarId && !category.isDefault) setCategories(items => items.map(c => c.id === category.id ? { ...c, googleCalendarId: destination } : c));
         console.log("✅ 구글 캘린더 이벤트가 업데이트되었습니다:", event.title);
         return true;
       } catch (error) {
         console.error("❌ 구글 캘린더 업데이트 실패:", error);
-        toast.error("구글 캘린더 업데이트 실패");
+        toast.error(error instanceof Error ? error.message : "구글 캘린더 업데이트 실패");
         return false;
       } finally {
         setGlobalLoading(false);
       }
     },
-    [syncState, setGlobalLoading]
+    [syncState, setGlobalLoading, categories, setCategories, setEvents]
   );
 
   /**
