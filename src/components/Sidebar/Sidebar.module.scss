@@ -10,6 +10,8 @@
   animation: slideIn $transition-normal;
   overflow: hidden; // 내부 스크롤 관리를 위해 추가
 }
+.dateTitle {font-size:13px;margin-bottom:9px;}
+.divider {display:none;}
 
 @keyframes slideIn {
   from {
@@ -121,3 +123,5 @@
     transform: scale(0.98);
   }
 }
+.dateTitle {font-size:13px;margin-bottom:9px;}
+.tab.active {color:var(--color-on-primary);}

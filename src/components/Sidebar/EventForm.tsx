@@ -83,7 +83,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
   const [customColors, setCustomColors] = useState<Array<{ id: string; color: string }>>([]);
   const [tempColor, setTempColor] = useState<string>("#FFB6C1");
 
-  // 카테고리 변경 시 카테고리 색상을 이벤트 색상으로 자동 적용
+  // 카테고리 변경 시 카테고리 색상을 일정 색상으로 자동 적용
   useEffect(() => {
     const selectedCategory = categories.find((c) => c.id === categoryId);
     if (selectedCategory) {
@@ -136,7 +136,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
     e.preventDefault();
 
     if (!title.trim()) {
-      toast.error("이벤트 제목을 입력해주세요");
+      toast.error("일정 제목을 입력해주세요");
       return;
     }
 
@@ -162,7 +162,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
       }
     }
 
-    // 반복 이벤트 설정 처리
+    // 반복 일정 설정 처리
     let finalRecurrence = isRecurring ? { ...recurrence } : undefined;
 
     if (isRecurring && finalRecurrence) {
@@ -211,15 +211,15 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
       reminderTime: reminder ? reminderTime : undefined,
       reminderForAllOccurrences:
         reminder && isRecurring ? reminderForAllOccurrences : undefined,
-      googleEventId: event?.googleEventId, // 기존 구글 이벤트 ID 유지
+      googleEventId: event?.googleEventId, // 기존 구글 일정 ID 유지
       googleCalendarId: event?.googleCalendarId, // 기존 구글 캘린더 ID 유지
       tags: [],
     };
 
-    // 로컬 상태에 이벤트 저장
+    // 로컬 상태에 일정 저장
     setEvents((prev) => {
       if (event) {
-        // 반복 이벤트의 경우 baseEventId 사용, 없으면 원본 ID 추출
+        // 반복 일정의 경우 baseEventId 사용, 없으면 원본 ID 추출
         const targetId = event.baseEventId || event.id;
         return prev.map((e) => (e.id === targetId ? newEvent : e));
       }
@@ -228,25 +228,25 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
 
     // 성공 메시지 표시
     toast.success(
-      event ? "이벤트가 수정되었습니다" : "이벤트가 추가되었습니다"
+      event ? "일정가 수정되었습니다" : "일정가 추가되었습니다"
     );
 
     // 구글 캘린더 자동 동기화 (연동되고 autoSync가 켜져 있을 때만)
     if (syncState.isConnected && syncState.autoSync) {
-      // 구글 캘린더에서 가져온 이벤트인지 확인 (ID가 'google_'로 시작)
+      // 구글 캘린더에서 가져온 일정인지 확인 (ID가 'google_'로 시작)
       const isGoogleEvent = newEvent.id.startsWith('google_');
 
       try {
-        // 수정 모드이고 googleEventId가 있으면 → 업데이트 (구글 이벤트든 일반 이벤트든)
+        // 수정 모드이고 googleEventId가 있으면 → 업데이트 (구글 일정든 일반 일정든)
         if (event && newEvent.googleEventId && newEvent.googleCalendarId) {
           await updateGoogleEvent(newEvent);
-          console.log("✅ 구글 캘린더 이벤트가 업데이트되었습니다:", newEvent.title);
+          console.log("✅ 구글 캘린더 일정가 업데이트되었습니다:", newEvent.title);
         }
-        // 새 이벤트이고 구글 이벤트가 아닌 경우 → 생성
+        // 새 일정이고 구글 일정가 아닌 경우 → 생성
         else if (!event && !isGoogleEvent) {
           const result = await exportToGoogle(newEvent);
           if (result) {
-            // 구글 캘린더 ID 정보를 로컬 이벤트에 저장
+            // 구글 캘린더 ID 정보를 로컬 일정에 저장
             setEvents((prev) =>
               prev.map((e) =>
                 e.id === newEvent.id
@@ -258,17 +258,17 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
                   : e
               )
             );
-            console.log("✅ 구글 캘린더에 이벤트가 자동 동기화되었습니다:", newEvent.title);
+            console.log("✅ 구글 캘린더에 일정가 자동 동기화되었습니다:", newEvent.title);
           }
         }
-        // 그 외의 경우 (구글 이벤트를 새로 생성하는 경우 등)는 건너뛰기
+        // 그 외의 경우 (구글 일정를 새로 생성하는 경우 등)는 건너뛰기
       } catch (error) {
         console.error("❌ 구글 캘린더 자동 동기화 실패:", error);
         // 에러가 발생해도 로컬 저장은 완료되었으므로 사용자에게 별도 에러 표시 안 함
       }
     }
 
-    // 선택된 이벤트 초기화
+    // 선택된 일정 초기화
     setSelectedEvent(null);
     onClose();
   };
@@ -278,7 +278,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
       <div className={styles.overlay} onClick={onClose} />
       <div className={styles.content}>
         <div className={styles.header}>
-          <h2>{event ? "이벤트 수정" : "새 이벤트"}</h2>
+          <h2>{event ? "일정 수정" : "새 일정"}</h2>
           <button className={styles.closeButton} onClick={onClose} type="button">
             ×
           </button>
@@ -286,13 +286,13 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
         <form className={styles.eventForm} onSubmit={handleSubmit}>
           <div className={styles.formBody}>
             <div className={styles.formGroup}>
-              <label htmlFor="title">이벤트 제목</label>
+              <label htmlFor="title">일정 제목</label>
         <input
           id="title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="이벤트 제목을 입력하세요"
+          placeholder="일정 제목을 입력하세요"
           required
         />
       </div>
@@ -304,7 +304,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
             checked={isMultiDay}
             onChange={(e) => {
               setIsMultiDay(e.target.checked);
-              // 다중 날짜 선택 시 반복 이벤트 해제
+              // 다중 날짜 선택 시 반복 일정 해제
               if (e.target.checked) {
                 setIsRecurring(false);
               }
@@ -377,7 +377,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
           }`}
           title={
             isMultiDay
-              ? "종료 날짜가 설정된 경우 반복 이벤트를 사용할 수 없습니다"
+              ? "종료 날짜가 설정된 경우 반복 일정를 사용할 수 없습니다"
               : ""
           }
         >
@@ -387,7 +387,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
             onChange={(e) => setIsRecurring(e.target.checked)}
             disabled={isMultiDay}
           />
-          반복 이벤트
+          반복 일정
           {isMultiDay && (
             <span className={styles.disabledNote}>
               {" "}
@@ -558,7 +558,7 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
               onChange={(e) => setReminderTime(e.target.value as ReminderTime)}
             >
               <option value="now">
-                {isAllDay ? "자정 (00:00)" : "이벤트 시작 시"}
+                {isAllDay ? "자정 (00:00)" : "일정 시작 시"}
               </option>
               {!isAllDay && (
                 <>
@@ -683,11 +683,11 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
               <div
                 className={styles.colorPickerContent}
                 onWheel={(e) => {
-                  // 스크롤 이벤트가 부모로 전파되지 않도록 방지
+                  // 스크롤 일정가 부모로 전파되지 않도록 방지
                   e.stopPropagation();
                 }}
                 onMouseDown={(e) => {
-                  // 컬러 피커 내부 클릭 시 이벤트 전파 방지
+                  // 컬러 피커 내부 클릭 시 일정 전파 방지
                   e.stopPropagation();
                 }}
               >

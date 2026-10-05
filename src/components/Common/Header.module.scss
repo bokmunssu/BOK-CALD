@@ -407,3 +407,18 @@
     transform: translateY(0);
   }
 }
+.header {height:54px;min-height:54px;padding:0 12px;flex-wrap:nowrap;gap:8px;}
+.leftSection {gap:8px;min-width:0;}
+.title {font-size:16px;letter-spacing:1px;}
+.centerSection {gap:8px;}
+.rightSection {gap:7px;}
+.menuButton {width:30px;height:30px;}
+.currentMonth h2 {font-size:18px;white-space:nowrap;}
+.versionBadge .versionText {font-size:10px;}
+.currentMonth {min-width:150px;}
+.centerSection {flex-shrink:0;}
+.rightSection {min-width:0;flex-shrink:0;}
+.title {-webkit-text-fill-color:var(--color-text);color:var(--color-text);}
+.todayButton {color:var(--color-text);padding:5px 8px;white-space:nowrap;}
+.viewButton {padding:5px 9px;}
+@media (max-width:850px) {.header {padding:0 8px;gap:6px;} .currentMonth {min-width:130px;} .rightSection {gap:5px;} .leftSection {gap:6px;}}

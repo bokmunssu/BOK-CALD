@@ -35,8 +35,8 @@ export class GoogleCalendarService {
   private pendingRequests = new Map<string, Promise<any>>();
 
   private constructor() {
-    this.clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-    this.clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET || "";
+    this.clientId = import.meta.env.VITE_TOMO_GOOGLE_CLIENT_ID || "";
+    this.clientSecret = import.meta.env.VITE_TOMO_GOOGLE_CLIENT_SECRET || "";
     // 로컬 loopback 주소 사용 (구글이 권장하는 데스크톱 앱 방식)
     this.redirectUri = "http://localhost:8080";
   }
@@ -52,6 +52,7 @@ export class GoogleCalendarService {
    * OAuth 인증 URL 생성
    */
   getAuthUrl(): string {
+    if (!this.clientId) throw new Error("이 빌드의 Google 로그인은 배포자 앱 등록을 준비 중입니다.");
     const params = new URLSearchParams({
       client_id: this.clientId,
       redirect_uri: this.redirectUri,
@@ -505,7 +506,7 @@ export class GoogleCalendarService {
       googleEvent.extendedProperties.private = {};
     }
     if (event.id) {
-      googleEvent.extendedProperties.private.shinya_local_id = String(event.id);
+      googleEvent.extendedProperties.private.tomo_local_id = String(event.id);
     }
 
     const encodedCalendarId = encodeURIComponent(calendarId);
@@ -746,51 +747,6 @@ export class GoogleCalendarService {
   }
 
   /**
-   * 캘린더에 사용자 초대 (ACL 규칙 추가)
-   * @param calendarId 캘린더 ID
-   * @param email 초대할 사용자의 이메일
-   * @param role 권한 ('owner', 'writer', 'reader')
-   * @returns ACL 규칙 ID
-   */
-  async shareCalendar(
-    calendarId: string,
-    email: string,
-    role: "owner" | "writer" | "reader" = "writer"
-  ): Promise<string> {
-    const auth = await this.ensureValidToken();
-
-    const aclRule = {
-      scope: {
-        type: "user",
-        value: email,
-      },
-      role: role,
-    };
-
-    const encodedCalendarId = encodeURIComponent(calendarId);
-    const response = await fetch(
-      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/acl`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${auth.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(aclRule),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Failed to share calendar:", errorData);
-      throw new Error(`Failed to share calendar: ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    return data.id;
-  }
-
-  /**
    * 캘린더 목록 가져오기 (캐싱 + Request Deduplication 적용)
    * @param forceRefresh 캐시 무시하고 강제로 새로고침
    * @returns 캘린더 목록
@@ -880,78 +836,6 @@ export class GoogleCalendarService {
   }
 
   /**
-   * 캘린더의 공유 사용자 목록 가져오기
-   * @param calendarId 캘린더 ID
-   * @returns 공유 사용자 목록
-   */
-  async listCalendarShares(calendarId: string): Promise<
-    Array<{
-      id: string;
-      role: string;
-      scope: {
-        type: string;
-        value?: string;
-      };
-    }>
-  > {
-    const auth = await this.ensureValidToken();
-
-    const encodedCalendarId = encodeURIComponent(calendarId);
-    const response = await fetch(
-      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/acl`,
-      {
-        headers: {
-          Authorization: `Bearer ${auth.access_token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Failed to list calendar shares:", errorData);
-      throw new Error(
-        `Failed to list calendar shares: ${JSON.stringify(errorData)}`
-      );
-    }
-
-    const data = await response.json();
-    return (data.items || []).map((item: any) => ({
-      id: item.id,
-      role: item.role,
-      scope: item.scope,
-    }));
-  }
-
-  /**
-   * 캘린더 공유 제거 (ACL 규칙 삭제)
-   * @param calendarId 캘린더 ID
-   * @param ruleId ACL 규칙 ID
-   */
-  async removeCalendarShare(calendarId: string, ruleId: string): Promise<void> {
-    const auth = await this.ensureValidToken();
-
-    const encodedCalendarId = encodeURIComponent(calendarId);
-    const encodedRuleId = encodeURIComponent(ruleId);
-    const response = await fetch(
-      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/acl/${encodedRuleId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${auth.access_token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Failed to remove calendar share:", errorData);
-      throw new Error(
-        `Failed to remove calendar share: ${JSON.stringify(errorData)}`
-      );
-    }
-  }
-
-  /**
    * 카테고리를 위한 구글 캘린더 ID 가져오기 또는 생성
    * @param categoryId 카테고리 ID
    * @param categoryName 카테고리 이름
@@ -971,7 +855,7 @@ export class GoogleCalendarService {
     // 카테고리 ID로 캘린더 찾기 (summary에서 검색)
     const calendars = await this.listCalendars();
     const existingCalendar = calendars.find(
-      (cal) => cal.summary === `[Shinya] ${categoryName}`
+      (cal) => cal.summary === `[TOMO] ${categoryName}`
     );
 
     if (existingCalendar) {
@@ -980,7 +864,7 @@ export class GoogleCalendarService {
 
     // 없으면 새로 생성
     const calendarId = await this.createCalendar(
-      `[Shinya] ${categoryName}`,
+      `[TOMO] ${categoryName}`,
       categoryDescription,
       Intl.DateTimeFormat().resolvedOptions().timeZone
     );

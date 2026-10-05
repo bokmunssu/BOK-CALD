@@ -20,8 +20,11 @@ import {
 } from "date-fns";
 import { ko } from "date-fns/locale";
 import styles from "./DayView.module.scss";
+import { workspaceSettingsState } from '../../store/workspace';
+import { koreanHolidayName } from '../../utils/holidays';
 
 const DayView: React.FC = () => {
+  const settings = useRecoilValue(workspaceSettingsState);
   const [selectedDate] = useRecoilState(selectedDateState);
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
@@ -147,7 +150,7 @@ const DayView: React.FC = () => {
   return (
     <div className={styles.dayView}>
       <div className={styles.dayHeader}>
-        <h2 className={styles.dateTitle}>{formatDate(selectedDate, 'yyyy년 M월 d일 EEEE')}</h2>
+        <h2 className={styles.dateTitle} title={settings.koreanHolidays ? koreanHolidayName(selectedDate) : undefined} style={settings.koreanHolidays && koreanHolidayName(selectedDate) ? { color: '#d45d6a' } : undefined}>{formatDate(selectedDate, 'yyyy년 M월 d일 EEEE')}</h2>
       </div>
 
       <div className={styles.timeGrid}>

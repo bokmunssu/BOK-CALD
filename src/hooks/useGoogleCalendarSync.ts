@@ -55,8 +55,8 @@ export const useGoogleCalendarSync = () => {
           : { id: '', color: getColorByIndex(0), isNew: false };
       }
 
-      // "[Shinya]" 접두사 제거
-      const cleanName = calendarName.replace(/^\[Shinya\]\s*/, "").trim();
+      // "[TOMO]" 접두사 제거
+      const cleanName = calendarName.replace(/^\[TOMO\]\s*/, "").trim();
 
       // 1. 정확한 이름 매칭
       let matchedCategory = currentCategories.find(
@@ -258,17 +258,17 @@ export const useGoogleCalendarSync = () => {
 
         // 실제 처리 루프: importedEvents는 convertGoogleEventToAppEvent로 이미 변환된 로컬 형태
         for (const importedEvent of importedEvents) {
-          // 1) shinya_local_id 우선 검사
-          const shinyaLocalId =
+          // 1) tomo_local_id 우선 검사
+          const tomoLocalId =
             (importedEvent as any).id && String(importedEvent.id).startsWith("google_") === false
               ? importedEvent.id
-              : (importedEvent as any).__shinya_local_id ?? null;
+              : (importedEvent as any).__tomo_local_id ?? null;
 
           let matchedLocal: Event | undefined;
 
-          if (shinyaLocalId && existingEventsMapById.has(String(shinyaLocalId))) {
-            matchedLocal = existingEventsMapById.get(String(shinyaLocalId));
-            console.log("[sync] matched by shinya_local_id:", importedEvent.title, shinyaLocalId);
+          if (tomoLocalId && existingEventsMapById.has(String(tomoLocalId))) {
+            matchedLocal = existingEventsMapById.get(String(tomoLocalId));
+            console.log("[sync] matched by tomo_local_id:", importedEvent.title, tomoLocalId);
           }
 
           // 2) 구글 이벤트 ID로 매칭
@@ -648,9 +648,9 @@ function convertGoogleEventToAppEvent(gEvent: GoogleCalendarEvent): Event {
 
   // 핵심 변화: 구글 이벤트에 저장된 로컬 ID가 있으면 그것을 로컬 이벤트 id로 사용
   const injectedLocalId =
-    (gEvent as any).__shinya_local_id ??
-    gEvent.extendedProperties?.private?.shinya_local_id ??
-    gEvent.extendedProperties?.shared?.shinya_local_id ??
+    (gEvent as any).__tomo_local_id ??
+    gEvent.extendedProperties?.private?.tomo_local_id ??
+    gEvent.extendedProperties?.shared?.tomo_local_id ??
     null;
 
   const localId = injectedLocalId ? String(injectedLocalId) : `google_${gEvent.id || uuidv4()}`;

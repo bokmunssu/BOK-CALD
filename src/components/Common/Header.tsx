@@ -22,6 +22,7 @@ import { electronStore } from "@utils/electronStore";
 import { getCurrentVersion, checkForUpdates } from "@utils/version";
 import { useGoogleCalendarSync } from "@hooks/useGoogleCalendarSync";
 import styles from "./Header.module.scss";
+import MicrosoftPanel from '../Widgets/MicrosoftPanel';
 
 // Lazy load Google Calendar component
 const GoogleCalendarSyncPanel = React.lazy(() =>
@@ -52,6 +53,7 @@ const Header: React.FC = () => {
   const syncState = useRecoilValue(googleCalendarSyncState);
   const { importFromGoogle, isSyncing } = useGoogleCalendarSync();
   const [showGoogleCalendar, setShowGoogleCalendar] = useState(false);
+  const [showMicrosoft, setShowMicrosoft] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showStylingManager, setShowStylingManager] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -231,7 +233,7 @@ const Header: React.FC = () => {
         >
           <span className={styles.menuIcon}>☰</span>
         </button>
-        <h1 className={styles.title}></h1>
+        <h1 className={styles.title}>TOMO</h1>
       </div>
 
       <div className={styles.centerSection}>
@@ -352,100 +354,9 @@ const Header: React.FC = () => {
                 <FcGoogle size={18} />
                 구글 캘린더
               </button>
+              <button onClick={() => { setShowMicrosoft(true); setShowMenu(false); }}>✓ Microsoft To Do</button>
 
-              <button
-                onClick={async () => {
-                  setShowMenu(false);
 
-                  const confirmed = window.confirm(
-                    "기존 이벤트 데이터를 새로운 형식으로 변환하시겠습니까?\n\n" +
-                      "이 작업은 RRULE 도입 이전의 반복 이벤트 데이터를 현재 형식으로 업데이트합니다.\n" +
-                      "- 주별 반복: 시작일의 요일을 byweekday로 설정\n" +
-                      "- 월별 반복: 시작일의 날짜를 bymonthday로 설정\n\n" +
-                      "진행하시겠습니까?"
-                  );
-
-                  if (!confirmed) return;
-
-                  try {
-                    // 기존 이벤트 데이터 가져오기
-                    const events = (await electronStore.get("events")) || [];
-                    let convertedCount = 0;
-
-                    // 이전 형식을 현재 형식으로 변환
-                    const convertedEvents = events.map((event: any) => {
-                      // recurrence가 없으면 변환 불필요
-                      if (!event.recurrence) {
-                        return event;
-                      }
-
-                      const recurrence = event.recurrence;
-                      let needsConversion = false;
-                      const newRecurrence = { ...recurrence };
-
-                      // 주별 반복: byweekday가 없으면 시작일의 요일로 설정
-                      if (
-                        recurrence.frequency === "weekly" &&
-                        !recurrence.byweekday
-                      ) {
-                        const eventDate = new Date(event.date);
-                        const dayOfWeek = eventDate.getDay(); // 0=일요일, 1=월요일...
-                        const rruleDayOfWeek =
-                          dayOfWeek === 0 ? 6 : dayOfWeek - 1; // RRule: 0=월요일
-                        newRecurrence.byweekday = [rruleDayOfWeek];
-                        needsConversion = true;
-                      }
-
-                      // 월별 반복: bymonthday와 bysetpos가 없으면 시작일의 날짜로 설정
-                      if (
-                        recurrence.frequency === "monthly" &&
-                        !recurrence.bymonthday &&
-                        !recurrence.bysetpos
-                      ) {
-                        const eventDate = new Date(event.date);
-                        newRecurrence.bymonthday = eventDate.getDate();
-                        needsConversion = true;
-                      }
-
-                      // byweekday 정렬 (이미 있는 경우)
-                      if (
-                        recurrence.byweekday &&
-                        Array.isArray(recurrence.byweekday)
-                      ) {
-                        newRecurrence.byweekday = [
-                          ...recurrence.byweekday,
-                        ].sort((a: number, b: number) => a - b);
-                        needsConversion = true;
-                      }
-
-                      if (needsConversion) {
-                        convertedCount++;
-                        return {
-                          ...event,
-                          recurrence: newRecurrence,
-                        };
-                      }
-
-                      return event;
-                    });
-
-                    // 변환된 데이터 저장
-                    await electronStore.set("events", convertedEvents);
-
-                    toast.success(
-                      `${convertedCount}개의 이벤트를 새로운 형식으로 변환했습니다. 페이지를 새로고침합니다.`
-                    );
-
-                    // 페이지 새로고침
-                    setTimeout(() => window.location.reload(), 1500);
-                  } catch (error) {
-                    console.error("데이터 변환 실패:", error);
-                    toast.error("데이터 변환에 실패했습니다.");
-                  }
-                }}
-              >
-                기존 데이터 옮기기
-              </button>
               <button
                 onClick={() => {
                   setShowMenu(false);
@@ -459,6 +370,7 @@ const Header: React.FC = () => {
           )}
         </div>
       </div>
+{showMicrosoft && <MicrosoftPanel onClose={() => setShowMicrosoft(false)} />}
       {showCategoryManager && (
         <React.Suspense fallback={<div>로딩 중...</div>}>
           <CategoryManager

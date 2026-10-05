@@ -34,22 +34,22 @@ const EventList: React.FC<EventListProps> = ({ events }) => {
   };
 
   const handleDelete = async (event: Event) => {
-    // 반복 이벤트인 경우 모달 표시
+    // 반복 일정인 경우 모달 표시
     if (event.recurrence || event.baseEventId) {
       setDeletingEvent(event);
       setShowDeleteModal(true);
     } else {
-      // 일반 이벤트는 바로 삭제 확인
-      if (confirm("이 이벤트를 삭제하시겠습니까?")) {
+      // 일반 일정는 바로 삭제 확인
+      if (confirm("이 일정를 삭제하시겠습니까?")) {
         // 로컬에서 삭제
         setEvents((prev) => prev.filter((e) => e.id !== event.id));
-        toast.success("이벤트가 삭제되었습니다");
+        toast.success("일정이 삭제되었습니다");
 
         // 구글 캘린더 자동 동기화 (연동되고 autoSync가 켜져 있을 때만)
         if (syncState.isConnected && syncState.autoSync && event.googleEventId && event.googleCalendarId) {
           try {
             await googleCalendarService.deleteEvent(event.googleEventId, event.googleCalendarId);
-            console.log("✅ 구글 캘린더에서 이벤트가 자동 삭제되었습니다:", event.title);
+            console.log("✅ 구글 캘린더에서 일정이 자동 삭제되었습니다:", event.title);
           } catch (error) {
             console.error("❌ 구글 캘린더 자동 삭제 실패:", error);
             // 에러가 발생해도 로컬 삭제는 완료되었으므로 사용자에게 별도 에러 표시 안 함
@@ -88,7 +88,7 @@ const EventList: React.FC<EventListProps> = ({ events }) => {
 
     setShowDeleteModal(false);
     setDeletingEvent(null);
-    toast.success("선택한 이벤트가 삭제되었습니다");
+    toast.success("선택한 일정이 삭제되었습니다");
   };
 
   const handleDeleteAll = async () => {
@@ -101,13 +101,13 @@ const EventList: React.FC<EventListProps> = ({ events }) => {
     setEvents((prev) => prev.filter((e) => e.id !== targetId));
     setShowDeleteModal(false);
     setDeletingEvent(null);
-    toast.success("모든 반복 이벤트가 삭제되었습니다");
+    toast.success("모든 반복 일정이 삭제되었습니다");
 
     // 구글 캘린더 자동 동기화 (연동되고 autoSync가 켜져 있을 때만)
     if (syncState.isConnected && syncState.autoSync && deletingEvent.googleEventId && deletingEvent.googleCalendarId) {
       try {
         await googleCalendarService.deleteEvent(deletingEvent.googleEventId, deletingEvent.googleCalendarId);
-        console.log("✅ 구글 캘린더에서 반복 이벤트가 자동 삭제되었습니다:", deletingEvent.title);
+        console.log("✅ 구글 캘린더에서 반복 일정이 자동 삭제되었습니다:", deletingEvent.title);
       } catch (error) {
         console.error("❌ 구글 캘린더 자동 삭제 실패:", error);
         // 에러가 발생해도 로컬 삭제는 완료되었으므로 사용자에게 별도 에러 표시 안 함
@@ -125,8 +125,8 @@ const EventList: React.FC<EventListProps> = ({ events }) => {
   };
 
   if (selectedEvent) {
-    // 선택된 이벤트를 events 배열에서 찾기
-    // 반복 이벤트의 경우 전달된 events prop에 인스턴스가 포함되어 있음
+    // 선택된 일정를 events 배열에서 찾기
+    // 반복 일정의 경우 전달된 events prop에 인스턴스가 포함되어 있음
     const event = events.find((e) => e.id === selectedEvent.id);
     if (event) {
       return <EventDetail event={event} onEdit={() => handleEdit(event)} />;
@@ -146,25 +146,25 @@ const EventList: React.FC<EventListProps> = ({ events }) => {
   if (events.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <p>이 날짜에 이벤트가 없습니다</p>
-        <span>"이벤트 추가"를 클릭하여 생성하세요</span>
+        <p>이 날짜에 일정이 없습니다</p>
+        <span>"일정 추가"를 클릭하여 생성하세요</span>
       </div>
     );
   }
 
-  // 시간순으로 정렬: 종일 이벤트 → 시간 이벤트 (시간순)
+  // 시간순으로 정렬: 종일 일정 → 시간 일정 (시간순)
   const sortedEvents = [...events].sort((a, b) => {
-    // 종일 이벤트는 맨 앞으로
+    // 종일 일정는 맨 앞으로
     if (a.isAllDay && !b.isAllDay) return -1;
     if (!a.isAllDay && b.isAllDay) return 1;
     if (a.isAllDay && b.isAllDay) return 0;
 
-    // 시간이 있는 이벤트는 시간순으로 정렬
+    // 시간이 있는 일정는 시간순으로 정렬
     if (a.startTime && b.startTime) {
       return a.startTime.localeCompare(b.startTime);
     }
 
-    // 시작 시간이 없는 이벤트는 뒤로
+    // 시작 시간이 없는 일정는 뒤로
     if (!a.startTime) return 1;
     if (!b.startTime) return -1;
 

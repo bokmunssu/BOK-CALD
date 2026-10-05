@@ -26,18 +26,18 @@ const Sidebar: React.FC = () => {
   );
   const [showEventForm, setShowEventForm] = useState(false);
 
-  // 날짜가 변경되면 선택된 이벤트 초기화
+  // 날짜가 변경되면 선택된 일정 초기화
   useEffect(() => {
     setSelectedEvent(null);
   }, [selectedDate, setSelectedEvent]);
 
-  // 탭이 변경되면 선택된 이벤트 초기화
+  // 탭이 변경되면 선택된 일정 초기화
   const handleTabChange = (tab: "events" | "todoMemo" | "notes") => {
     setActiveTab(tab);
     setSelectedEvent(null);
   };
 
-  // 이벤트 추가 폼을 열 때 선택된 이벤트 초기화
+  // 일정 추가 폼을 열 때 선택된 일정 초기화
   const handleToggleEventForm = () => {
     setShowEventForm(!showEventForm);
     if (!showEventForm) {
@@ -45,8 +45,8 @@ const Sidebar: React.FC = () => {
     }
   };
 
-  // 반복 이벤트를 포함하여 선택된 날짜의 이벤트 가져오기
-  // 선택된 날짜 기준 3개월 범위로 반복 이벤트 계산
+  // 반복 일정를 포함하여 선택된 날짜의 일정 가져오기
+  // 선택된 날짜 기준 3개월 범위로 반복 일정 계산
   const selectedDateEvents = useMemo(() => getEventsForDate(events, selectedDate,
     startOfMonth(addMonths(selectedDate, -1)), endOfMonth(addMonths(selectedDate, 2))),
   [events, selectedDate]);
@@ -67,7 +67,7 @@ const Sidebar: React.FC = () => {
             }`}
             onClick={() => handleTabChange("events")}
           >
-            이벤트
+            일정
           </button>
           <button
             className={`${styles.tab} ${
@@ -75,7 +75,7 @@ const Sidebar: React.FC = () => {
             }`}
             onClick={() => handleTabChange("todoMemo")}
           >
-            리스트
+            할 일
           </button>
           <button
             className={`${styles.tab} ${
@@ -83,7 +83,7 @@ const Sidebar: React.FC = () => {
             }`}
             onClick={() => handleTabChange("notes")}
           >
-            메모장
+            메모
           </button>
         </div>
       </div>
@@ -96,7 +96,7 @@ const Sidebar: React.FC = () => {
                 className={styles.addButton}
                 onClick={handleToggleEventForm}
               >
-                {showEventForm ? "취소" : "+ 이벤트 추가"}
+                {showEventForm ? "취소" : "+ 일정 추가"}
               </button>
             </div>
             {showEventForm && (
@@ -112,7 +112,7 @@ const Sidebar: React.FC = () => {
         {activeTab === "todoMemo" && <TodoList date={selectedDate} />}
 
         {activeTab === "notes" && (
-          <Notes />
+          <Notes inline />
         )}
       </div>
     </aside>

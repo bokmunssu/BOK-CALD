@@ -15,11 +15,11 @@ describe('EventForm Component', () => {
     vi.clearAllMocks();
   });
 
-  it('새 이벤트 폼 렌더링', async () => {
+  it('새 일정 폼 렌더링', async () => {
     const date = new Date('2024-01-15');
     await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
-    expect(screen.getByLabelText('이벤트 제목')).toBeInTheDocument();
+    expect(screen.getByLabelText('일정 제목')).toBeInTheDocument();
     expect(screen.getByText('날짜')).toBeInTheDocument();
     expect(screen.getByText('저장')).toBeInTheDocument();
     expect(screen.getByText('취소')).toBeInTheDocument();
@@ -36,11 +36,11 @@ describe('EventForm Component', () => {
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
-  it('이벤트 수정 모드', async () => {
+  it('일정 수정 모드', async () => {
     const date = new Date('2024-01-15');
     const event = {
       id: 'test-1',
-      title: '기존 이벤트',
+      title: '기존 일정',
       date: date,
       startTime: '10:00',
       endTime: '11:00',
@@ -51,7 +51,7 @@ describe('EventForm Component', () => {
 
     await renderWithRecoil(<EventForm date={date} event={event} onClose={mockOnClose} />);
 
-    expect(screen.getByDisplayValue('기존 이벤트')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('기존 일정')).toBeInTheDocument();
     expect(screen.getByDisplayValue('10:00')).toBeInTheDocument();
     expect(screen.getByDisplayValue('11:00')).toBeInTheDocument();
     expect(screen.getByText('수정')).toBeInTheDocument();
@@ -73,11 +73,11 @@ describe('EventForm Component', () => {
     expect(screen.queryByLabelText('종료 시간')).not.toBeInTheDocument();
   });
 
-  it('반복 이벤트 설정', async () => {
+  it('반복 일정 설정', async () => {
     const date = new Date('2024-01-15');
     await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
-    const recurringCheckbox = screen.getByLabelText('반복 이벤트');
+    const recurringCheckbox = screen.getByLabelText('반복 일정');
     fireEvent.click(recurringCheckbox);
 
     expect(screen.getByLabelText('반복 주기')).toBeInTheDocument();
@@ -85,15 +85,15 @@ describe('EventForm Component', () => {
     expect(screen.getByLabelText('반복 종료')).toBeInTheDocument();
   });
 
-  it('종료 날짜 설정 시 반복 이벤트 비활성화', async () => {
+  it('종료 날짜 설정 시 반복 일정 비활성화', async () => {
     const date = new Date('2024-01-15');
     await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const multiDayCheckbox = screen.getByLabelText('종료 날짜 설정');
     fireEvent.click(multiDayCheckbox);
 
-    // 반복 이벤트 체크박스를 포함하는 label 요소를 찾아서 disabled 상태 확인
-    const recurringLabel = screen.getByText('반복 이벤트').closest('label');
+    // 반복 일정 체크박스를 포함하는 label 요소를 찾아서 disabled 상태 확인
+    const recurringLabel = screen.getByText('반복 일정').closest('label');
     const recurringCheckbox = recurringLabel?.querySelector('input[type="checkbox"]');
     expect(recurringCheckbox).toBeDisabled();
   });
@@ -138,13 +138,13 @@ describe('EventForm Component', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('성공적인 이벤트 저장', async () => {
+  it('성공적인 일정 저장', async () => {
     const user = userEvent.setup();
     const date = new Date('2024-01-15');
     await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
-    const titleInput = screen.getByLabelText('이벤트 제목');
-    await user.type(titleInput, '새로운 이벤트');
+    const titleInput = screen.getByLabelText('일정 제목');
+    await user.type(titleInput, '새로운 일정');
 
     const startTimeInput = screen.getByLabelText('시작 시간');
     fireEvent.change(startTimeInput, { target: { value: '10:00' } });

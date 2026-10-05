@@ -17,10 +17,13 @@ import {
   startOfMonth,
 } from "date-fns";
 import React from "react";
+import { workspaceSettingsState } from '../../store/workspace';
+import { koreanHolidayName } from '../../utils/holidays';
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./WeekView.module.scss";
 
 const WeekView: React.FC = () => {
+  const settings = useRecoilValue(workspaceSettingsState);
   const [selectedDate, setSelectedDate] = useRecoilState(selectedDateState);
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
@@ -209,7 +212,7 @@ const WeekView: React.FC = () => {
               onClick={() => setSelectedDate(date)}
             >
               <div className={styles.dayName}>{weekDayNames[index]}</div>
-              <div className={styles.dayNumber}>{date.getDate()}</div>
+              <div className={styles.dayNumber} title={settings.koreanHolidays ? koreanHolidayName(date) : undefined} style={settings.koreanHolidays && koreanHolidayName(date) ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
             </div>
           );
         })}

@@ -1,6 +1,23 @@
 /// <reference types="vite/client" />
 
 interface ElectronAPI {
+  microsoftTodo: {
+    status: () => Promise<import('./types/microsoft').MicrosoftStatus>;
+    login: () => Promise<import('./types/microsoft').MicrosoftStatus>;
+    cancel: () => Promise<void>;
+    disconnect: () => Promise<import('./types/microsoft').MicrosoftStatus>;
+    lists: () => Promise<import('./types/microsoft').MicrosoftList[]>;
+    selectList: (id: string) => Promise<import('./types/microsoft').MicrosoftStatus>;
+    createList: () => Promise<import('./types/microsoft').MicrosoftList>;
+    autoSync: (value: boolean) => Promise<import('./types/microsoft').MicrosoftStatus>;
+    sync: () => Promise<import('./types/microsoft').MicrosoftStatus>;
+    subscribe: (callback: (value: import('./types/microsoft').MicrosoftStatus) => void) => () => void;
+  };
+  workTime: {
+    get: () => Promise<import('./utils/worktime').WorkTimeSnapshot>;
+    command: (command: 'start' | 'pause' | 'add' | 'remove' | 'rename', value?: Partial<import('./utils/worktime').WorkTarget>) => Promise<import('./utils/worktime').WorkTimeSnapshot>;
+    subscribe: (callback: (value: import('./utils/worktime').WorkTimeSnapshot) => void) => () => void;
+  };
   openWidget: (kind: import('./utils/workspace').WidgetKind, memoId?: string) => Promise<void>;
   openCalendar: () => Promise<void>;
   getPinned: () => Promise<boolean>;

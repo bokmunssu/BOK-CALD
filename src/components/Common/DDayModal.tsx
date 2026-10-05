@@ -4,7 +4,8 @@ import { dDaysState, activeDDayState, modalActiveState } from '@store/atoms';
 import { DDay } from '@types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
-import { MdClose, MdEdit, MdDelete, MdCheck, MdCalendarToday } from 'react-icons/md';
+import { MdClose, MdEdit, MdDelete, MdCheck, MdCalendarToday, MdOpenInNew } from 'react-icons/md';
+import { openWidget } from '../Widgets/WorkspaceControls';
 import CustomDatePicker from './CustomDatePicker';
 import styles from './DDayModal.module.scss';
 
@@ -99,7 +100,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
     <div className={styles.modalBackdrop} onClick={handleBackdropClick}>
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>D-Day 관리</h2>
+          <h2 className={styles.modalTitle}>D-DAY 관리</h2>
           <button className={styles.closeButton} onClick={onClose}>
             <MdClose />
           </button>
@@ -189,6 +190,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
                       )}
                     </div>
                     <div className={styles.ddayActions}>
+                      <button className={styles.editButton} aria-label={`${dday.title} 위젯 열기`} title="이 디데이를 위젯으로 열기" onClick={() => openWidget('dday', dday.id)}><MdOpenInNew /></button>
                       {!isActive && (
                         <button
                           className={styles.activateButton}

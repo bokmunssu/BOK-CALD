@@ -7,7 +7,7 @@ let calendar: Page;
 test.beforeEach(async ({}, info) => {
   const data = path.resolve(info.outputPath('user-data'));
   fs.mkdirSync(data, { recursive: true });
-  app = await electron.launch({ args: ['.'], env: { ...process.env, NODE_ENV: 'production', BOK_CALD_TEST_USER_DATA: data } });
+  app = await electron.launch({ ...(process.env.TOMO_E2E_EXECUTABLE ? { executablePath: process.env.TOMO_E2E_EXECUTABLE, args: [] } : { args: ['.'] }), env: { ...process.env, NODE_ENV: 'production', TOMO_TEST_USER_DATA: data } });
   calendar = await app.firstWindow();
   await expect(calendar.getByLabel('심플 모드')).toBeVisible();
 });
@@ -80,12 +80,12 @@ test('todo changes propagate between calendar and widget', async () => {
   const todo = await openWidget('todo');
   await todo.getByLabel('새 할 일').fill('양방향 확인');
   await todo.getByRole('button', { name: '추가', exact: true }).click();
-  await calendar.getByRole('button', { name: '리스트', exact: true }).click();
+  await calendar.locator('aside').getByRole('button', { name: '할 일', exact: true }).click();
   await expect(calendar.getByLabel('할 일 수정')).toHaveValue('양방향 확인');
   await calendar.getByLabel('양방향 확인 완료').check();
   await expect(todo.getByLabel('양방향 확인 완료')).toBeChecked();
   await todo.getByRole('button', { name: '맨 위 고정' }).click();
-  await todo.getByRole('button', { name: '고정 해제' }).click();
+  await todo.getByRole('button', { name: '맨 위 고정' }).click();
   expect(await todo.evaluate(() => window.electronAPI.getPinned())).toBe(false);
 });
 
@@ -100,29 +100,29 @@ test('calendar view and sidebar survive closing and reopening while a widget rem
   await todo.getByRole('button', { name: '캘린더', exact: true }).click();
   calendar = await reopened;
   await expect(calendar.getByRole('button', { name: '주', exact: true })).toHaveClass(/active/);
-  await expect(calendar.getByText('D-Day 설정하기')).toHaveCount(0);
+  await expect(calendar.locator('aside')).toHaveCount(0);
 });
 
 test('focus gate counts only the selected active window title', async () => {
   test.skip(process.platform !== 'win32', 'Windows foreground detection');
   const timer = await openWidget('pomodoro');
   await app.evaluate(({ BrowserWindow }) => {
-    const win = new BrowserWindow({ title: 'BOK focus test target', width: 320, height: 240 });
+    const win = new BrowserWindow({ title: 'TOMO focus test target', width: 320, height: 240 });
     win.loadURL('about:blank'); win.show(); win.focus();
   });
   const capture = timer.evaluate(() => window.electronAPI.timer.capture());
   await app.evaluate(({ BrowserWindow }) => {
-    const win = BrowserWindow.getAllWindows().find(w => w.getTitle() === 'BOK focus test target')!;
+    const win = BrowserWindow.getAllWindows().find(w => w.getTitle() === 'TOMO focus test target')!;
     win.show(); win.focus();
   });
   const target = await capture;
-  expect(target.title).toBe('BOK focus test target');
+  expect(target.title).toBe('TOMO focus test target');
   await timer.evaluate(async target => {
     await window.electronAPI.timer.command('configure', { gated: true, target: { ...target, mode: 'title' } });
     await window.electronAPI.timer.command('start');
   }, target);
   await expect.poll(() => timer.evaluate(async () => (await window.electronAPI.timer.get()).remainingMs)).toBeLessThan(1499000);
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'BOK focus test target')!.setTitle('BOK other tab'));
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'TOMO focus test target')!.setTitle('TOMO other tab'));
   await expect.poll(() => timer.evaluate(async () => (await window.electronAPI.timer.get()).targetActive)).toBe(false);
   const paused = await timer.evaluate(() => window.electronAPI.timer.get());
   await timer.waitForTimeout(1600);
@@ -132,4 +132,66 @@ test('focus gate counts only the selected active window title', async () => {
     await window.electronAPI.timer.command('start');
   });
   await expect.poll(() => timer.evaluate(async () => (await window.electronAPI.timer.get()).remainingMs)).toBeLessThan(1499000);
+});
+
+test('simple mode keeps theme colors and Korean holiday highlighting is optional', async () => {
+  await calendar.evaluate(() => window.electronAPI.store.set('currentTheme', { id: 'pastel-blue', colors: {} }));
+  await calendar.reload();
+  await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim())).toBe('#B6D7FF');
+  await calendar.getByLabel('심플 모드').uncheck();
+  await calendar.getByLabel('심플 모드').check();
+  await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim())).toBe('#B6D7FF');
+  const holiday = calendar.locator('[class*="calendarDay_"]').filter({ has: calendar.locator('[title="개천절"]') });
+  await expect(holiday).toHaveCount(1);
+  await calendar.getByLabel('한국 공휴일 표시').uncheck();
+  await expect(calendar.locator('[title="개천절"]')).toHaveCount(0);
+});
+test('D-DAY management opens each individual countdown window', async ({}, info) => {
+  await calendar.evaluate(() => window.electronAPI.store.set('dDays', ['day-a', 'day-b'].map((id, i) => ({ id, title: i ? '여행' : '마감', targetDate: '2026-12-01', createdAt: new Date().toISOString(), isActive: false }))));
+  await calendar.reload();
+  await calendar.getByRole('button', { name: 'D-DAY 관리', exact: true }).click();
+  let next = app.waitForEvent('window');
+  await calendar.getByRole('button', { name: '마감 위젯 열기' }).last().click();
+  const a = await next;
+  next = app.waitForEvent('window');
+  await calendar.getByRole('button', { name: '여행 위젯 열기' }).click();
+  const b = await next;
+  await expect(a.getByRole('heading', { name: '마감' })).toBeVisible();
+  await expect(b.getByRole('heading', { name: '여행' })).toBeVisible();
+  await a.screenshot({ path: info.outputPath('dday-widget.png') });
+});
+test('circular timer and login settings use compact controls', async ({}, info) => {
+  const timer = await openWidget('pomodoro');
+  await expect(timer.locator('svg[viewBox="0 0 256 256"] circle')).toHaveCount(2);
+  await timer.screenshot({ path: info.outputPath('pomodoro-widget.png') });
+  const todo = await openWidget('todo');
+  await todo.getByLabel('새 할 일').fill('디자인 확인');
+  await todo.getByRole('button', { name: '추가', exact: true }).click();
+  await todo.screenshot({ path: info.outputPath('todo-widget.png') });
+  await todo.getByRole('button', { name: 'Microsoft To Do 연동' }).click();
+  await expect(todo.getByRole('heading', { name: 'Microsoft To Do' })).toBeVisible();
+  await expect(todo.getByRole('dialog').locator('input')).toHaveCount(0);
+});
+test('work time records only its selected active window and stops on pause', async ({}, info) => {
+  test.skip(process.platform !== 'win32');
+  const work = await openWidget('worktime');
+  await app.evaluate(({ BrowserWindow }) => {
+    const win = new BrowserWindow({ title: 'TOMO work test', width: 320, height: 240 });
+    win.loadURL('about:blank'); win.show(); win.focus();
+  });
+  const capturing = work.evaluate(() => window.electronAPI.timer.capture());
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'TOMO work test')!.focus());
+  const target = await capturing;
+  await work.evaluate(async target => {
+    await window.electronAPI.workTime.command('add', { label: '집중 작업', target: { ...target, mode: 'title' } });
+    await window.electronAPI.workTime.command('start');
+  }, target);
+  await expect.poll(() => work.evaluate(async () => (await window.electronAPI.workTime.get()).targets[0].days)).not.toEqual({});
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'TOMO work test')!.setTitle('다른 탭'));
+  await expect.poll(() => work.evaluate(async () => (await window.electronAPI.workTime.get()).activeId)).toBeNull();
+  const before = await work.evaluate(() => window.electronAPI.workTime.get());
+  await work.waitForTimeout(1500);
+  expect((await work.evaluate(() => window.electronAPI.workTime.get())).targets[0].days).toEqual(before.targets[0].days);
+  await work.evaluate(() => window.electronAPI.workTime.command('pause'));
+  await work.screenshot({ path: info.outputPath('work-time-widget.png') });
 });

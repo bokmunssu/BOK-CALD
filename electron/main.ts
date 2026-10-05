@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Notification, shell } from "electron";
 import path from "path";
 import os from "os";
 import Store from "electron-store";
+import { registerMicrosoftTodo } from './microsoftTodo';
 import { registerWidgets } from './widgets';
 import { mergeItems } from '../src/utils/workspace';
 import {
@@ -11,7 +12,9 @@ import {
 } from "./googleOAuthHandler";
 
 // Tests use a separate directory; never touch the user's real calendar data.
-if (process.env.BOK_CALD_TEST_USER_DATA) app.setPath('userData', process.env.BOK_CALD_TEST_USER_DATA);
+app.setName('TOMO CALENDAR');
+app.setPath('userData', process.env.TOMO_TEST_USER_DATA || process.env.BOK_CALD_TEST_USER_DATA || path.join(app.getPath('appData'), 'TOMO CALENDAR'));
+app.setAppUserModelId('io.github.bokmunssu.tomo.calendar');
 // Electron Store 초기화
 const store = new Store();
 
@@ -53,7 +56,8 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     ...windowState,
-    title: "BOK-CALD",
+    title: "TOMO CALENDAR",
+    alwaysOnTop: store.get('calendarPinned') === true,
     minWidth: 760,
     minHeight: 480,
     webPreferences: {
@@ -118,6 +122,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerMicrosoftTodo(store, broadcastStore);
   registerWidgets(store, () => {
     if (!mainWindow) createWindow();
     else { mainWindow.show(); mainWindow.restore(); mainWindow.focus(); }

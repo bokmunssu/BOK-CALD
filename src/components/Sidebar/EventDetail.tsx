@@ -23,15 +23,15 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onEdit }) => {
   };
 
   const handleDelete = () => {
-    // 반복 이벤트인 경우 모달 표시
+    // 반복 일정인 경우 모달 표시
     if (event.recurrence || event.baseEventId) {
       setShowDeleteModal(true);
     } else {
-      // 일반 이벤트는 바로 삭제 확인
-      if (confirm("이 이벤트를 삭제하시겠습니까?")) {
+      // 일반 일정는 바로 삭제 확인
+      if (confirm("이 일정를 삭제하시겠습니까?")) {
         setEvents((prev) => prev.filter((e) => e.id !== event.id));
         setSelectedEvent(null);
-        toast.success("이벤트가 삭제되었습니다");
+        toast.success("일정이 삭제되었습니다");
       }
     }
   };
@@ -63,7 +63,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onEdit }) => {
 
     setShowDeleteModal(false);
     setSelectedEvent(null);
-    toast.success("선택한 이벤트가 삭제되었습니다");
+    toast.success("선택한 일정이 삭제되었습니다");
   };
 
   const handleDeleteAll = () => {
@@ -72,7 +72,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onEdit }) => {
     setEvents((prev) => prev.filter((e) => e.id !== targetId));
     setShowDeleteModal(false);
     setSelectedEvent(null);
-    toast.success("모든 반복 이벤트가 삭제되었습니다");
+    toast.success("모든 반복 일정이 삭제되었습니다");
   };
 
   const formatTime = (time?: string) => {
@@ -90,7 +90,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onEdit }) => {
         <button className={styles.closeButton} onClick={handleClose}>
           ←
         </button>
-        <h3>이벤트 상세</h3>
+        <h3>일정 상세</h3>
       </div>
 
       <div className={styles.detailBody}>
@@ -206,7 +206,7 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onEdit }) => {
               <label>알림</label>
               <div className={styles.detailValue}>
                 {event.reminderTime === "now" &&
-                  (event.isAllDay ? "자정 (00:00)" : "이벤트 시작 시")}
+                  (event.isAllDay ? "자정 (00:00)" : "일정 시작 시")}
                 {event.reminderTime === "5min" && "5분 전"}
                 {event.reminderTime === "10min" && "10분 전"}
                 {event.reminderTime === "30min" && "30분 전"}

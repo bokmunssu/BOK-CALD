@@ -1,9 +1,10 @@
-export type WidgetKind = 'todo' | 'memo' | 'dday' | 'pomodoro';
-export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number }
+export type WidgetKind = 'todo' | 'memo' | 'dday' | 'pomodoro' | 'worktime';
+export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number; koreanHolidays: boolean }
 export const normalizeSettings = (value: Partial<WorkspaceSettings> = {}): WorkspaceSettings => ({
   simple: typeof value.simple === 'boolean' ? value.simple : true,
   bannerVisible: typeof value.bannerVisible === 'boolean' ? value.bannerVisible : true,
   bannerHeight: Number.isFinite(value.bannerHeight) ? Math.max(40, Math.min(240, value.bannerHeight!)) : 100,
+  koreanHolidays: value.koreanHolidays !== false,
 });
 
 // Apply only changed records to the latest main-process snapshot, so separate
