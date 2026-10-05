@@ -178,3 +178,10 @@
 }
 .dayNumber {margin-bottom:2px;line-height:1.3;}
 .calendarDay.selected .dayNumber, .calendarDay.today .dayNumber {color:var(--color-on-primary);}
+
+.connectedGrid { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(min-content,1fr); }
+.calendarWeek { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:1px; position:relative; background:var(--color-border); }
+.calendarWeek .calendarDay:hover { transform:none; z-index:0; }
+.calendarWeek .dayContent { padding-top:var(--span-space,0px); margin-top:auto; flex:none; min-height:28px; }
+.calendarWeek .dayNumber { flex-shrink:0; }
+.weekSpans { position:absolute; top:56px; left:0; right:0; z-index:1; pointer-events:none; }

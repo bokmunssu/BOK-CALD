@@ -1,0 +1,5 @@
+.bars { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px 0; pointer-events:none; width:100%; }
+.bar { pointer-events:auto; display:flex; align-items:center; gap:4px; margin:0 2px; padding:1px 5px; min-width:0; height:22px; border:0; border-left:3px solid; color:var(--color-text); font:inherit; font-size:11px; cursor:pointer; text-align:left; }
+.bar:hover { filter:brightness(0.95); }
+.bar:focus-visible { outline:2px solid var(--color-primary); outline-offset:1px; }
+.title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }

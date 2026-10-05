@@ -7,6 +7,56 @@ import { randomBytes } from 'node:crypto';
 let app: ElectronApplication;
 let calendar: Page;
 
+test('connected multi-day bars span the date columns and the choice survives reload', async ({},info)=>{
+  await calendar.evaluate(async()=>{
+    const date=new Date();date.setDate(5);const end=new Date(date);end.setDate(9);
+    await window.electronAPI.store.set('events',[{id:'range',title:'연속 일정 시험',date,endDate:end,color:'#7a99d6',isAllDay:true},{id:'overlap',title:'겹침 시험',date:new Date(date.getFullYear(),date.getMonth(),6),endDate:new Date(date.getFullYear(),date.getMonth(),8),color:'#d699a7',isAllDay:true}]);
+  });
+  await calendar.reload();
+  await calendar.getByLabel('기간 일정 표시').selectOption('connected');
+  const bar=calendar.locator('[data-span-id="range"]');await expect(bar).toHaveCount(1);
+  const overlap=calendar.locator('[data-span-id="overlap"]');await expect(overlap).toHaveCount(1);
+  const box=await bar.boundingBox(),other=await overlap.boundingBox();
+  expect(box!.width).toBeGreaterThan(200);expect(other!.y).toBeGreaterThanOrEqual(box!.y+box!.height);
+  await calendar.reload();await expect(calendar.getByLabel('기간 일정 표시')).toHaveValue('connected');
+  await expect.poll(()=>calendar.getByRole('complementary').evaluate(el=>getComputedStyle(el).transform)).toBe('none');
+  await calendar.screenshot({path:info.outputPath('connected-calendar.png')});
+  await bar.click();await calendar.getByRole('button',{name:'수정',exact:true}).first().click();await expect(calendar.getByLabel('일정 제목')).toHaveValue('연속 일정 시험');
+  await calendar.getByRole('button',{name:'취소',exact:true}).click();
+  await calendar.getByRole('button',{name:'주',exact:true}).click();
+  await expect(bar).toHaveCount(1);await expect(overlap).toHaveCount(1);
+  await calendar.screenshot({path:info.outputPath('connected-week.png')});
+  await calendar.getByRole('button',{name:'월',exact:true}).click();
+  await calendar.getByLabel('기간 일정 표시').selectOption('daily');
+  await expect(bar).toHaveCount(0);
+  await expect(calendar.locator('[class*="calendarGrid_"]').getByText('연속 일정 시험',{exact:true})).toHaveCount(5);
+});
+
+test('todo list pickers replace tags and the sync dialog offers all lists with a Google icon', async ({},info)=>{
+  await app.evaluate(({ipcMain})=>{
+    let state={configured:true,connected:true,accountId:'test-account',email:'test@example.com',syncing:false,autoSync:true,listId:'personal',defaultListId:'personal',lists:[{id:'personal',title:'내 할 일 목록'},{id:'study',title:'공부'},{id:'school',title:'학업'}]};
+    for(const name of ['status','lists','select','sync'])ipcMain.removeHandler('googleTasks-'+name);
+    ipcMain.handle('googleTasks-status',()=>state);
+    ipcMain.handle('googleTasks-lists',()=>state.lists);
+    ipcMain.handle('googleTasks-select',(_,id)=>{state={...state,listId:id};return state;});
+    ipcMain.handle('googleTasks-sync',()=>state);
+  });
+  const todo=await openWidget('todo');
+  await todo.getByLabel('새 할 일 목록').selectOption('study');
+  await todo.getByLabel('새 할 일',{exact:true}).fill('목록 선택 시험');await todo.getByRole('button',{name:'추가',exact:true}).click();
+  await expect(todo.getByLabel('목록 선택 시험 목록',{exact:true})).toHaveValue('study');
+  await todo.getByLabel('목록 선택 시험 목록',{exact:true}).selectOption('school');
+  await expect.poll(()=>todo.evaluate(async()=>{return (await window.electronAPI.store.get('todos'))[0]?.taskListId;})).toBe('school');
+  await expect(todo.getByLabel(/태그/)).toHaveCount(0);
+  await todo.screenshot({path:info.outputPath('tasks-list-row.png')});
+  await todo.getByLabel('Google Tasks 연동').click();
+  const dialog=todo.getByRole('dialog');await dialog.getByLabel('Google Tasks 목록').selectOption('__all__');
+  await dialog.getByRole('button',{name:'지금 동기화'}).click();
+  await expect(dialog.getByLabel('Google Tasks 목록')).toHaveValue('__all__');
+  await expect(dialog.locator('svg path[stroke="#4285f4"]')).toHaveCount(1);
+  await todo.screenshot({path:info.outputPath('tasks-list-selection.png')});
+});
+
 test('lunar display is optional and a lunar schedule stores its converted solar date', async ({}, info) => {
   await calendar.getByLabel('음력 표시', {exact:true}).check();
   await expect(calendar.locator('[class*="calendarDay_"]').first().getByText(/음력/)).toBeVisible();

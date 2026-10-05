@@ -37,6 +37,8 @@ export function importTask(
     createdAt: previous?.createdAt ?? new Date(),
     updatedAt: new Date(remote.updated || Date.now()),
     googleTasks: { accountId, listId, taskId: remote.id },
+    taskListId: listId,
+    taskListAccountId: accountId,
   };
 }
 export function taskSyncAction(

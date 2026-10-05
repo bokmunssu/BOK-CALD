@@ -17,6 +17,8 @@ import {
   startOfMonth,
 } from "date-fns";
 import React from "react";
+import {isMultiDayEvent,layoutEventSpans} from "../../utils/eventSpans";
+import SpanningEvents from "./SpanningEvents";
 import { workspaceSettingsState } from '../../store/workspace';
 import { lunarLabel } from "../../utils/lunar";
 import { koreanHolidayName } from '../../utils/holidays';
@@ -113,6 +115,7 @@ const WeekView: React.FC = () => {
         height = elapsedMinutes * PIXELS_PER_MINUTE;
       }
 
+      if (settings.multiDayDisplay === 'daily') return {top,height,left:dayIndex*(100/7),width:100/7,isMultiDay:true,continuesFromPrevious:startsBeforeToday,continuesToNext:endsAfterToday,eventStart,eventEnd};
       // 가로 위치와 너비 계산 (여러 날에 걸친 경우)
       let left = dayIndex * (100 / 7);
       let width = 100 / 7;
@@ -220,12 +223,13 @@ const WeekView: React.FC = () => {
         })}
       </div>
 
+      {settings.multiDayDisplay === 'connected' && <div className={styles.rangeStrip}><div className={styles.rangeLabel}>기간</div><SpanningEvents spans={layoutEventSpans([...new Map(weekDays.flatMap(d=>getEventsForDateLocal(d)).map(e=>[e.id,e])).values()],weekDays)} onClick={event=>{setSelectedEvent(event);setSelectedDate(weekDays.find(d=>getEventsForDateLocal(d).some(e=>e.id===event.id))!);}} /></div>}
       <div className={styles.weekContent}>
         <div className={styles.allDayRow}>
           <div className={styles.allDayLabel}>종일</div>
           {weekDays.map((date) => {
             const dayEvents = getEventsForDateLocal(date).filter(
-              (e) => e.isAllDay || !e.startTime
+              (e) => (settings.multiDayDisplay !== 'connected' || !isMultiDayEvent(e)) && (e.isAllDay || !e.startTime)
             );
             return (
               <div key={date.toISOString()} className={styles.allDayCell}>
@@ -270,7 +274,7 @@ const WeekView: React.FC = () => {
             <div className={styles.eventsLayer}>
               {weekDays.map((date, dayIndex) => {
                 const dayEvents = getEventsForDateLocal(date).filter(
-                  (e) => !e.isAllDay && (e.startTime || (e.endDate && e.date !== e.endDate))
+                  (e) => (settings.multiDayDisplay !== 'connected' || !isMultiDayEvent(e)) && !e.isAllDay && (e.startTime || (e.endDate && e.date !== e.endDate))
                 );
                 return dayEvents.map((event) => {
                   const position = getEventPosition(event, dayIndex, date);

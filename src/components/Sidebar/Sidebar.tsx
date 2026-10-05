@@ -12,7 +12,7 @@ import Notes from "../Widgets/Notes";
 import TodoList from '../Widgets/TodoList';
 import DDayWidget from "../Common/DDayWidget";
 import { formatDate } from "@utils/calendar";
-import { getEventsForDate } from "@utils/eventUtils";
+import { getEventsForDate, isEventOnDate } from "@utils/eventUtils";
 import { startOfMonth, endOfMonth, addMonths } from "date-fns";
 import styles from "./Sidebar.module.scss";
 
@@ -28,7 +28,7 @@ const Sidebar: React.FC = () => {
 
   // 날짜가 변경되면 선택된 일정 초기화
   useEffect(() => {
-    setSelectedEvent(null);
+    setSelectedEvent(event => event && isEventOnDate(event, selectedDate) ? event : null);
   }, [selectedDate, setSelectedEvent]);
 
   // 탭이 변경되면 선택된 일정 초기화

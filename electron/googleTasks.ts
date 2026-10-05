@@ -21,6 +21,9 @@ type SyncData = {
   email?: string;
   listId?: string;
   listName?: string;
+  allLists?: boolean;
+  lists?: GoogleTaskList[];
+  pendingMove?: { localId: string; source: string; destination: string; taskId: string };
   lastSync?: string;
   mappings: TaskMapping[];
   mappingSets?: Record<string, TaskMapping[]>;
@@ -42,6 +45,14 @@ export class GoogleTasksService {
       autoSync: true,
     };
     this.data.mappings ||= [];
+    // Migrate per-list mappings without losing inactive-list deletion history.
+    const merged = new Map<string, TaskMapping>();
+    for (const [listId, maps] of Object.entries(this.data.mappingSets || {}))
+      for (const map of maps) merged.set(map.localId, { ...map, listId });
+    for (const map of this.data.mappings) merged.set(map.localId, { ...map, listId: map.listId || this.data.listId });
+    this.data.mappings = [...merged.values()];
+    this.data.mappingSets = undefined;
+    this.persist();
   }
   status(): GoogleTasksStatus {
     return {
@@ -49,13 +60,16 @@ export class GoogleTasksService {
       connected: !!this.account.auth() && !!this.data.accountId,
       accountId: this.data.accountId,
       email: this.data.email,
-      listId: this.data.listId,
+      listId: this.data.allLists ? "__all__" : this.data.listId,
+      defaultListId: this.data.listId,
+      allLists: !!this.data.allLists,
+      lists: this.data.lists || [],
       listName: this.data.listName,
       lastSync: this.data.lastSync,
       autoSync: this.data.autoSync !== false,
       syncing: !!this.flight,
-      error: this.lastError || (this.data.pendingCreate ? "이전 할 일 추가 결과를 확인하지 못했습니다. Google Tasks 목록을 확인해 주세요." : undefined),
-      needsReview: !!this.data.pendingCreate,
+      error: this.lastError || (this.data.pendingMove ? "이전 목록 이동 결과를 확인하지 못했습니다. Google Tasks에서 원본/대상 목록을 확인해 주세요." : undefined) || (this.data.pendingCreate ? "이전 할 일 추가 결과를 확인하지 못했습니다. Google Tasks 목록을 확인해 주세요." : undefined),
+      needsReview: !!this.data.pendingCreate || !!this.data.pendingMove,
     };
   }
   private emit() {
@@ -100,6 +114,7 @@ export class GoogleTasksService {
   }
   resolveCreate() {
     this.data.pendingCreate = undefined;
+    this.data.pendingMove = undefined;
     this.persist();
     this.lastError = "";
     this.emit();
@@ -161,22 +176,24 @@ export class GoogleTasksService {
     } while (token);
     return items;
   }
-  lists() {
-    return this.collection<GoogleTaskList>("/users/@me/lists?maxResults=100");
+  async lists() {
+    const generation = this.generation;
+    const lists = await this.collection<GoogleTaskList>("/users/@me/lists?maxResults=100");
+    if (generation !== this.generation || !this.account.auth()) throw Error("계정 연결이 변경되었습니다.");
+    this.data.lists = lists;
+    this.persist();
+    this.emit();
+    return lists;
   }
   async selectList(id: string, autoSync = true) {
     if (this.flight) throw new Error("동기화를 마친 뒤 목록을 바꿔 주세요.");
     const lists = await this.lists();
-    const list = lists.find((l) => l.id === id);
+    const allLists = id === "__all__";
+    const list = allLists ? (lists.find(l => l.id === this.data.listId) || lists[0]) : lists.find(l => l.id === id);
     if (!list) throw new Error("목록을 다시 선택해 주세요.");
-    if (this.data.listId !== id) {
-      this.data.mappingSets ||= {};
-      if (this.data.listId)
-        this.data.mappingSets[this.data.listId] = this.data.mappings;
-      this.data.mappings = this.data.mappingSets[id] || [];
-    }
-    this.data.listId = id;
-    this.data.listName = list.title;
+    this.data.allLists = allLists;
+    this.data.listId = list.id;
+    this.data.listName = allLists ? "전체 목록" : list.title;
     this.data.autoSync = autoSync;
     this.persist();
     this.emit();
@@ -216,10 +233,74 @@ export class GoogleTasksService {
   }
   private async runSync(): Promise<GoogleTasksStatus> {
     const generation = this.generation;
+    const ensureCurrent = () => {
+      if (generation !== this.generation || !this.account.auth()) throw Error("계정 연결이 변경되었습니다.");
+    };
+    if (this.data.pendingMove) throw Error("이전 목록 이동 결과를 Google Tasks에서 확인한 뒤 연결 설정에서 다시 시도해 주세요.");
+    let lists = this.data.allLists ? await this.lists() : this.data.lists;
+    const ids = new Set(this.data.allLists ? (lists || []).map(l => l.id) : [this.data.listId!]);
+    const snapshots = new Map<string, GoogleTask[]>();
+    if (this.data.allLists) {
+      // Fetch all lists before interpreting disappearance as a deletion.
+      for (const id of ids) {
+        const tasks = await this.collection<GoogleTask>(`/lists/${encodeURIComponent(id)}/tasks?showCompleted=true&showHidden=true&showDeleted=true&maxResults=100`);
+        ensureCurrent();snapshots.set(id,tasks);
+      }
+      for (const mapping of this.data.mappings) {
+        if (snapshots.get(mapping.listId!)?.some(t=>t.id===mapping.taskId && !t.deleted)) continue;
+        const destinations=[...snapshots].filter(([id,tasks])=>id!==mapping.listId && tasks.some(t=>t.id===mapping.taskId && !t.deleted));
+        if (destinations.length !== 1) continue;
+        const destination=destinations[0][0];
+        const latest=(this.store.get("todos") as TodoItem[]) || [];
+        const original=latest.find(t=>t.id===mapping.localId);
+        if (!original) { mapping.listId=destination;this.persist();continue; }
+        const next=latest.map(t=>t.id===mapping.localId ? {...t,googleTasks:{accountId:this.data.accountId!,listId:destination,taskId:mapping.taskId},...(t.taskListId===mapping.listId?{taskListId:destination}:{})} : t);
+        mapping.listId=destination;
+        this.store.set("todos",next);this.notify("todos",next);this.persist();
+      }
+    }
+    const todos = (this.store.get("todos") as TodoItem[]) || [];
+    // Explicit list changes are processed even when only one list is selected.
+    for (const task of todos) {
+      ensureCurrent();
+      if (!task.taskListId || task.taskListAccountId !== this.data.accountId) continue;
+      const link = task.googleTasks;
+      if (link && link.accountId === this.data.accountId && link.listId === task.taskListId) continue;
+      if (!lists) lists = await this.lists();
+      ensureCurrent();
+      if (!lists.some(l => l.id === task.taskListId)) throw Error("할 일의 대상 목록을 다시 선택해 주세요.");
+      if (!link || link.listId !== task.taskListId) ids.add(task.taskListId);
+      if (!link || link.accountId !== this.data.accountId || link.listId === task.taskListId) continue;
+      this.data.pendingMove = { localId: task.id, source: link.listId, destination: task.taskListId, taskId: link.taskId };
+      this.persist();
+      let moved: GoogleTask;
+      try {
+        moved = await this.api<GoogleTask>(`/lists/${encodeURIComponent(link.listId)}/tasks/${encodeURIComponent(link.taskId)}/move?destinationTasklist=${encodeURIComponent(task.taskListId)}`, "POST");
+      } catch (error) {
+        const status = (error as { status?: number }).status;
+        if (status && status >= 400 && status < 500 && status !== 408) { this.data.pendingMove = undefined; this.persist(); }
+        throw error;
+      }
+      ensureCurrent();
+      snapshots.delete(link.listId);snapshots.delete(task.taskListId);
+      const latest = (this.store.get("todos") as TodoItem[]) || [];
+      const next = latest.map(t => t.id === task.id ? { ...t, googleTasks: { ...link, listId: task.taskListId!, taskId: moved.id } } : t);
+      this.store.set("todos", next);this.notify("todos", next);
+      const mapping = this.data.mappings.find(m => m.localId === task.id);
+      this.data.mappings = this.data.mappings.filter(m => m.localId !== task.id);
+      this.data.mappings.push({ localId: task.id, listId: task.taskListId, taskId: moved.id, localHash: mapping?.localHash || localTaskHash(task), remoteHash: mapping?.remoteHash || remoteTaskHash(moved) });
+      this.data.pendingMove = undefined;this.persist();
+    }
+    for (const id of ids) { ensureCurrent(); await this.runListSync(id, snapshots.get(id)); }
+    ensureCurrent();
+    this.data.lastSync = new Date().toISOString();this.persist();
+    return this.status();
+  }
+  private async runListSync(listId: string, snapshot?: GoogleTask[]): Promise<GoogleTasksStatus> {
+    const generation = this.generation;
     const accountId = this.data.accountId!;
-    const listId = this.data.listId!;
     const route = `/lists/${encodeURIComponent(listId)}/tasks`;
-    const remote = await this.collection<GoogleTask>(
+    const remote = snapshot || await this.collection<GoogleTask>(
       `${route}?showCompleted=true&showHidden=true&showDeleted=true&maxResults=100`,
     );
     const remotes = new Map(remote.map((task) => [task.id, task]));
@@ -229,7 +310,7 @@ export class GoogleTasksService {
       createdAt: new Date(t.createdAt),
     }));
     const locals = new Map(local.map((t) => [t.id, t]));
-    const mappings = [...this.data.mappings];
+    const mappings = this.data.mappings.filter(m => m.listId === listId);
     const ensureCurrent = () => {
       if (generation !== this.generation || !this.account.auth())
         throw new Error("계정 연결이 변경되었습니다.");
@@ -253,6 +334,11 @@ export class GoogleTasksService {
           ? latest.map((t) => (t.id === id ? next : t))
           : [...latest, next]
         : latest.filter((t) => t.id !== id);
+      // Preserve local-only edits and a newer destination selected during a request.
+      if (current && next) {
+        const index = result.findIndex(t => t.id === id);
+        result[index] = { ...result[index], important: current.important, tags: current.tags, taskListId: current.taskListId, taskListAccountId: current.taskListAccountId };
+      }
       this.store.set("todos", result);
       this.notify("todos", result);
       return true;
@@ -264,12 +350,20 @@ export class GoogleTasksService {
         taskId: remoteTask.id,
         localHash: localTaskHash(localTask),
         remoteHash: remoteTaskHash(remoteTask),
+        listId,
       };
       this.data.mappings = [
         ...this.data.mappings.filter((m) => m.localId !== localTask.id),
         mapping,
       ];
       this.persist();
+      // Link the latest text even when applyLocal skipped an in-flight edit.
+      const latest=(this.store.get("todos") as TodoItem[]) || [];
+      const current=latest.find(t=>t.id===localTask.id);
+      if (current && (current.googleTasks?.accountId!==accountId || current.googleTasks.listId!==listId || current.googleTasks.taskId!==remoteTask.id)) {
+        const next=latest.map(t=>t.id===localTask.id ? {...t,googleTasks:{accountId,listId,taskId:remoteTask.id}} : t);
+        this.store.set("todos",next);this.notify("todos",next);
+      }
     };
     const forget = (id: string) => {
       this.data.mappings = this.data.mappings.filter((m) => m.localId !== id);
@@ -333,6 +427,8 @@ export class GoogleTasksService {
             id: randomUUID(),
             content: `${l!.content} (로컬 사본)`,
             googleTasks: undefined,
+            taskListId: listId,
+            taskListAccountId: accountId,
             updatedAt: new Date(),
           };
           applyLocal(copy.id, undefined, copy);
@@ -343,7 +439,8 @@ export class GoogleTasksService {
     }
     for (const task of local) {
       ensureCurrent();
-      if (!mappings.some((m) => m.localId === task.id) && !task.googleTasks)
+      const target = task.taskListAccountId === accountId && task.taskListId ? task.taskListId : this.data.listId;
+      if (!this.data.mappings.some(m => m.localId === task.id) && (!task.googleTasks || (task.googleTasks.accountId !== accountId && task.taskListAccountId === accountId)) && target === listId)
         await createRemote(task);
       else if (
         !mappings.some((m) => m.localId === task.id) &&
@@ -360,8 +457,8 @@ export class GoogleTasksService {
     for (const task of remote) {
       ensureCurrent();
       if (
-        this.data.mappings.some((m) => m.taskId === task.id) ||
-        mappings.some((m) => m.taskId === task.id)
+        this.data.mappings.some((m) => m.listId === listId && m.taskId === task.id) ||
+        mappings.some((m) => m.listId === listId && m.taskId === task.id)
       )
         continue;
       if (task.deleted) continue;

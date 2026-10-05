@@ -8,7 +8,10 @@ export interface GoogleTasksStatus {
   email?: string;
   accountId?: string;
   listId?: string;
+  defaultListId?: string;
   listName?: string;
+  allLists?: boolean;
+  lists?: GoogleTaskList[];
   lastSync?: string;
   syncing: boolean;
   autoSync: boolean;
@@ -26,6 +29,7 @@ export interface GoogleTask {
   etag?: string;
 }
 export interface TaskMapping {
+  listId?: string;
   localId: string;
   taskId: string;
   localHash: string;
