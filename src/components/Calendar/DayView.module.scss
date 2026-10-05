@@ -2,7 +2,8 @@
 @use '@styles/mixins' as *;
 
 .dayView {
-  height: 100%;
+  flex: 1;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
@@ -23,14 +24,6 @@
   font-size: $font-size-large;
   font-weight: 600;
   color: var(--color-text);
-}
-
-.diaryIndicator {
-  font-size: $font-size-base;
-  color: var(--color-primary);
-  padding: $spacing-xs $spacing-md;
-  background: var(--color-accent);
-  border-radius: $border-radius-small;
 }
 
 .timeGrid {

@@ -28,8 +28,7 @@ export const electronStore = {
     if (isElectron()) {
       try {
         await window.electronAPI.store.set(key, value);
-        // localStorage에도 백업으로 저장
-        localStorage.setItem(key, JSON.stringify(value));
+        // Electron Store is authoritative; avoid duplicating large image payloads.
       } catch (error) {
         console.error("Error setting to electron store:", error);
         localStorage.setItem(key, JSON.stringify(value));

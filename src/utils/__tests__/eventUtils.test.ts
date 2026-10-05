@@ -84,8 +84,9 @@ describe('Event Utils', () => {
 
       const events = generateRecurringEvents(intervalEvent, startRange, endRange);
 
-      // 15, 17, 19, 21, 23일
-      expect(events.length).toBe(5);
+      // Both boundaries are inclusive: 15, 17, 19, 21, 23, 25.
+      expect(events.length).toBe(6);
+      expect(events[5].date).toEqual(endRange);
       expect(events[1].date).toEqual(new Date('2024-01-17'));
     });
 

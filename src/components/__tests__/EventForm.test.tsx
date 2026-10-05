@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecoilRoot } from 'recoil';
 import EventForm from '../Sidebar/EventForm';
 
 const mockOnClose = vi.fn();
 
-const renderWithRecoil = (component: React.ReactElement) => {
-  return render(<RecoilRoot>{component}</RecoilRoot>);
+const renderWithRecoil = async (component: React.ReactElement) => {
+  await act(async () => { render(<RecoilRoot>{component}</RecoilRoot>); });
 };
 
 describe('EventForm Component', () => {
@@ -15,9 +15,9 @@ describe('EventForm Component', () => {
     vi.clearAllMocks();
   });
 
-  it('새 이벤트 폼 렌더링', () => {
+  it('새 이벤트 폼 렌더링', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     expect(screen.getByLabelText('이벤트 제목')).toBeInTheDocument();
     expect(screen.getByText('날짜')).toBeInTheDocument();
@@ -27,7 +27,7 @@ describe('EventForm Component', () => {
 
   it('제목 입력 필수 검증', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const saveButton = screen.getByText('저장');
     fireEvent.click(saveButton);
@@ -36,7 +36,7 @@ describe('EventForm Component', () => {
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
-  it('이벤트 수정 모드', () => {
+  it('이벤트 수정 모드', async () => {
     const date = new Date('2024-01-15');
     const event = {
       id: 'test-1',
@@ -49,7 +49,7 @@ describe('EventForm Component', () => {
       tags: [],
     };
 
-    renderWithRecoil(<EventForm date={date} event={event} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} event={event} onClose={mockOnClose} />);
 
     expect(screen.getByDisplayValue('기존 이벤트')).toBeInTheDocument();
     expect(screen.getByDisplayValue('10:00')).toBeInTheDocument();
@@ -59,7 +59,7 @@ describe('EventForm Component', () => {
 
   it('하루 종일 체크박스 토글', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const allDayCheckbox = screen.getByLabelText('하루 종일');
 
@@ -73,9 +73,9 @@ describe('EventForm Component', () => {
     expect(screen.queryByLabelText('종료 시간')).not.toBeInTheDocument();
   });
 
-  it('반복 이벤트 설정', () => {
+  it('반복 이벤트 설정', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const recurringCheckbox = screen.getByLabelText('반복 이벤트');
     fireEvent.click(recurringCheckbox);
@@ -85,9 +85,9 @@ describe('EventForm Component', () => {
     expect(screen.getByLabelText('반복 종료')).toBeInTheDocument();
   });
 
-  it('종료 날짜 설정 시 반복 이벤트 비활성화', () => {
+  it('종료 날짜 설정 시 반복 이벤트 비활성화', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const multiDayCheckbox = screen.getByLabelText('종료 날짜 설정');
     fireEvent.click(multiDayCheckbox);
@@ -98,13 +98,14 @@ describe('EventForm Component', () => {
     expect(recurringCheckbox).toBeDisabled();
   });
 
-  it('알림 설정', () => {
+  it('알림 설정', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     // 먼저 시간 설정
     const startTimeInput = screen.getByLabelText('시작 시간');
     fireEvent.change(startTimeInput, { target: { value: '10:00' } });
+    fireEvent.blur(startTimeInput);
 
     const reminderCheckbox = screen.getByLabelText('알림 설정');
     fireEvent.click(reminderCheckbox);
@@ -112,9 +113,9 @@ describe('EventForm Component', () => {
     expect(screen.getByLabelText('알림 시간')).toBeInTheDocument();
   });
 
-  it('색상 선택', () => {
+  it('색상 선택', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const colorButtons = screen.getAllByRole('button').filter(btn =>
       btn.style.backgroundColor
@@ -127,9 +128,9 @@ describe('EventForm Component', () => {
     expect(colorButtons[0].className).toContain('selected');
   });
 
-  it('취소 버튼 클릭', () => {
+  it('취소 버튼 클릭', async () => {
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const cancelButton = screen.getByText('취소');
     fireEvent.click(cancelButton);
@@ -140,16 +141,18 @@ describe('EventForm Component', () => {
   it('성공적인 이벤트 저장', async () => {
     const user = userEvent.setup();
     const date = new Date('2024-01-15');
-    renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
+    await renderWithRecoil(<EventForm date={date} onClose={mockOnClose} />);
 
     const titleInput = screen.getByLabelText('이벤트 제목');
     await user.type(titleInput, '새로운 이벤트');
 
     const startTimeInput = screen.getByLabelText('시작 시간');
     fireEvent.change(startTimeInput, { target: { value: '10:00' } });
+    fireEvent.blur(startTimeInput);
 
     const endTimeInput = screen.getByLabelText('종료 시간');
     fireEvent.change(endTimeInput, { target: { value: '11:00' } });
+    fireEvent.blur(endTimeInput);
 
     const descriptionInput = screen.getByLabelText('설명');
     await user.type(descriptionInput, '테스트 설명');

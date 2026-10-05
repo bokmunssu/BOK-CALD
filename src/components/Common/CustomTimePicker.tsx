@@ -6,6 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import styles from "./CustomTimePicker.module.scss";
 
 interface CustomTimePickerProps {
+  id?: string;
   value: string; // HH:mm format
   onChange: (time: string) => void;
   placeholderText?: string;
@@ -16,6 +17,7 @@ interface CustomTimePickerProps {
 }
 
 const CustomTimePicker: React.FC<CustomTimePickerProps> = ({
+  id,
   value,
   onChange,
   placeholderText = "시간을 선택하세요",
@@ -132,6 +134,7 @@ const CustomTimePicker: React.FC<CustomTimePickerProps> = ({
   return (
     <div className={`${styles.timePickerWrapper} ${className}`}>
       <DatePicker
+        id={id}
         selected={getDateFromTime(value)}
         onChange={handleTimeChange}
         onChangeRaw={handleInputChange}

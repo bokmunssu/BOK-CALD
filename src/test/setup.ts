@@ -4,13 +4,13 @@ import { vi } from 'vitest';
 // Mock Electron API
 (global as any).electronAPI = {
   store: {
-    get: vi.fn(),
-    set: vi.fn(),
-    delete: vi.fn(),
+    get: vi.fn().mockResolvedValue(undefined),
+    set: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
   },
   showNotification: vi.fn(),
   openFolderDialog: vi.fn(),
-  getPlatform: vi.fn(() => 'darwin'),
+  getPlatform: vi.fn().mockResolvedValue('darwin'),
   minimizeWindow: vi.fn(),
   maximizeWindow: vi.fn(),
   closeWindow: vi.fn(),

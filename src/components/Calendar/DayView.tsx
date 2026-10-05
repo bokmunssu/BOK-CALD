@@ -4,7 +4,6 @@ import {
   selectedDateState,
   selectedEventState,
   eventsState,
-  diaryEntriesState,
 } from "@store/atoms";
 import { formatDate, isSameDayAs } from "@utils/calendar";
 import { getEventsForDate } from "@utils/eventUtils";
@@ -20,14 +19,12 @@ import {
   format,
 } from "date-fns";
 import { ko } from "date-fns/locale";
-import { MdCreate } from "react-icons/md";
 import styles from "./DayView.module.scss";
 
 const DayView: React.FC = () => {
   const [selectedDate] = useRecoilState(selectedDateState);
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
-  const diaryEntries = useRecoilValue(diaryEntriesState);
 
   // 반복 이벤트를 포함하여 선택된 날짜의 이벤트 가져오기
   const rangeStart = startOfMonth(addMonths(selectedDate, -1));
@@ -44,9 +41,6 @@ const DayView: React.FC = () => {
     return 0;
   });
 
-  const hasDiary = diaryEntries.some((entry) =>
-    isSameDayAs(new Date(entry.date), selectedDate)
-  );
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -153,12 +147,7 @@ const DayView: React.FC = () => {
   return (
     <div className={styles.dayView}>
       <div className={styles.dayHeader}>
-        <h2 className={styles.dateTitle}>{formatDate(selectedDate)}</h2>
-        {hasDiary && (
-          <span className={styles.diaryIndicator}>
-            <MdCreate /> 일기 작성됨
-          </span>
-        )}
+        <h2 className={styles.dateTitle}>{formatDate(selectedDate, 'yyyy년 M월 d일 EEEE')}</h2>
       </div>
 
       <div className={styles.timeGrid}>

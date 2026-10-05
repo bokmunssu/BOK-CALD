@@ -5,6 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import styles from "./CustomDatePicker.module.scss";
 
 interface CustomDatePickerProps {
+  id?: string;
   selected: Date | null;
   onChange: (date: Date | null) => void;
   placeholderText?: string;
@@ -18,6 +19,7 @@ interface CustomDatePickerProps {
 }
 
 const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
+  id,
   selected,
   onChange,
   placeholderText = "날짜를 선택하세요",
@@ -32,6 +34,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   return (
     <div className={`${styles.datePickerWrapper} ${className}`}>
       <DatePicker
+        id={id}
         selected={selected}
         onChange={onChange}
         locale={ko}

@@ -1,5 +1,4 @@
 import {
-  diaryEntriesState,
   eventsState,
   selectedDateState,
   selectedEventState,
@@ -18,7 +17,6 @@ import {
   startOfMonth,
 } from "date-fns";
 import React from "react";
-import { MdCreate } from "react-icons/md";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./WeekView.module.scss";
 
@@ -26,7 +24,6 @@ const WeekView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useRecoilState(selectedDateState);
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
-  const diaryEntries = useRecoilValue(diaryEntriesState);
 
   const weekDays = getDaysInWeek(selectedDate);
   const weekDayNames = ["일", "월", "화", "수", "목", "금", "토"];
@@ -43,11 +40,6 @@ const WeekView: React.FC = () => {
     });
   };
 
-  const hasDiaryEntry = (date: Date) => {
-    return diaryEntries.some((entry) =>
-      isSameDayAs(new Date(entry.date), date)
-    );
-  };
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -207,7 +199,6 @@ const WeekView: React.FC = () => {
         {weekDays.map((date, index) => {
           const isSelected = isSameDayAs(date, selectedDate);
           const isToday = isCurrentDay(date);
-          const hasDiary = hasDiaryEntry(date);
 
           return (
             <div
@@ -219,11 +210,6 @@ const WeekView: React.FC = () => {
             >
               <div className={styles.dayName}>{weekDayNames[index]}</div>
               <div className={styles.dayNumber}>{date.getDate()}</div>
-              {hasDiary && (
-                <span className={styles.diaryDot}>
-                  <MdCreate />
-                </span>
-              )}
             </div>
           );
         })}

@@ -3,6 +3,8 @@ import weekday from "dayjs/plugin/weekday";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import "dayjs/locale/ko";
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 dayjs.extend(weekday);
 dayjs.extend(isSameOrBefore);
@@ -45,9 +47,9 @@ export const getDaysInWeek = (date: Date) => {
 
 export const formatDate = (
   date: Date,
-  formatStr: string = "YYYY년 MM월 DD일 dddd"
+  formatStr: string = "yyyy-MM-dd"
 ) => {
-  return dayjs(date).format(formatStr);
+  return format(date, formatStr, { locale: ko });
 };
 
 export const isCurrentMonth = (date: Date, currentMonth: Date) => {

@@ -1,6 +1,26 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  openWidget: (kind: string, memoId?: string) => ipcRenderer.invoke('widget-open', kind, memoId),
+  openCalendar: () => ipcRenderer.invoke('calendar-open'),
+  getPinned: () => ipcRenderer.invoke('window-pinned'),
+  setPinned: (value: boolean) => ipcRenderer.invoke('window-pin', value),
+  mergeItems: (key: string, previous: unknown[], next: unknown[]) => ipcRenderer.invoke('store-merge-items', key, previous, next),
+  onStoreChanged: (callback: (key: string, value: unknown) => void) => {
+    const listener = (_: unknown, key: string, value: unknown) => callback(key, value);
+    ipcRenderer.on('store-changed', listener);
+    return () => ipcRenderer.removeListener('store-changed', listener);
+  },
+  timer: {
+    get: () => ipcRenderer.invoke('timer-get'),
+    command: (command: string, value?: unknown) => ipcRenderer.invoke('timer-command', command, value),
+    capture: () => ipcRenderer.invoke('focus-capture'),
+    subscribe: (callback: (value: unknown) => void) => {
+      const listener = (_: unknown, value: unknown) => callback(value);
+      ipcRenderer.on('timer-changed', listener);
+      return () => ipcRenderer.removeListener('timer-changed', listener);
+    },
+  },
   getAppPath: () => ipcRenderer.invoke("get-app-path"),
   resizeWindow: (width: number, height: number) =>
     ipcRenderer.invoke("resize-window", width, height),

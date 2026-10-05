@@ -33,17 +33,6 @@ export interface RecurrenceRule {
   _rrule?: string; // 원본 RRULE 문자열 (구글 캘린더 호환용)
 }
 
-export interface DiaryEntry {
-  id: string;
-  date: Date;
-  title?: string;
-  content: string;
-  mood?: "happy" | "sad" | "neutral" | "excited" | "tired";
-  tags?: string[];
-  attachments?: string[];
-  weather?: string;
-}
-
 export interface Theme {
   id: string;
   name: string;
@@ -64,7 +53,6 @@ export interface Theme {
 export interface CalendarDate {
   date: Date;
   events: Event[];
-  hasDiary: boolean;
 }
 
 export interface DDay {
@@ -123,6 +111,7 @@ export interface TodoItem {
 }
 
 export interface MemoEntry {
+  title?: string;
   id: string;
   date: Date;
   content: string;

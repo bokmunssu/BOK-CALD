@@ -20,8 +20,8 @@
 }
 
 .sidebar {
-  position: fixed;
-  top: calc(40px + #{$header-height}); // TitleBar(40px) + Header 높이
+  position: absolute;
+  top: 0;
   bottom: 0;
   background: var(--color-surface);
   display: flex;

@@ -1,6 +1,18 @@
 /// <reference types="vite/client" />
 
 interface ElectronAPI {
+  openWidget: (kind: import('./utils/workspace').WidgetKind, memoId?: string) => Promise<void>;
+  openCalendar: () => Promise<void>;
+  getPinned: () => Promise<boolean>;
+  setPinned: (value: boolean) => Promise<boolean>;
+  mergeItems: (key: string, previous: unknown[], next: unknown[]) => Promise<void>;
+  onStoreChanged: (callback: (key: string, value: any) => void) => () => void;
+  timer: {
+    get: () => Promise<TimerSnapshot>;
+    command: (command: 'start' | 'pause' | 'reset' | 'configure', value?: Partial<import('./utils/workspace').TimerState>) => Promise<TimerSnapshot>;
+    capture: () => Promise<import('./utils/workspace').ForegroundWindow>;
+    subscribe: (callback: (value: TimerSnapshot) => void) => () => void;
+  };
   getAppPath: () => Promise<string>;
   resizeWindow: (
     width: number,
@@ -37,3 +49,5 @@ interface ElectronAPI {
 interface Window {
   electronAPI: ElectronAPI;
 }
+
+type TimerSnapshot = import('./utils/workspace').TimerState & { targetActive: boolean; focusSupported: boolean };

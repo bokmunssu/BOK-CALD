@@ -2,6 +2,7 @@
 @use "@styles/mixins" as *;
 
 .header {
+  flex-shrink: 0;
   height: $header-height;
   display: flex;
   align-items: center;
@@ -11,13 +12,20 @@
   border-bottom: 1px solid var(--color-border);
   position: relative;
   z-index: 10;
+  @media (max-width: 900px) {
+    height: auto;
+    min-height: 52px;
+    padding: 6px 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
 }
 
 .leftSection {
   display: flex;
   align-items: center;
   gap: $spacing-md;
-  min-width: 200px;
+  min-width: 40px;
 }
 
 .menuButton {

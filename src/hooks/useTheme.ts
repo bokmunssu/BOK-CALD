@@ -2,14 +2,19 @@ import { useRecoilState, useRecoilValue } from 'recoil';
 import { currentThemeState, customThemesState, predefinedThemes } from '@store/atoms';
 import { Theme } from '@types';
 import { useEffect } from 'react';
+import { workspaceSettingsState } from '../store/workspace';
 
 export const useTheme = () => {
+  const workspace = useRecoilValue(workspaceSettingsState);
   const [currentTheme, setCurrentTheme] = useRecoilState(currentThemeState);
   const [customThemes, setCustomThemes] = useRecoilState(customThemesState);
 
   const applyTheme = (theme: Theme) => {
     const root = document.documentElement;
-    const colors = theme.colors;
+    const colors = workspace.simple ? {
+      ...theme.colors, primary: '#52616b', secondary: '#697983', accent: '#e9eef1',
+      background: '#f6f7f8', surface: '#ffffff', text: '#283238', textSecondary: '#667780', border: '#dce2e6',
+    } : theme.colors;
 
     root.style.setProperty('--color-primary', colors.primary);
     root.style.setProperty('--color-secondary', colors.secondary);
@@ -26,7 +31,7 @@ export const useTheme = () => {
 
   useEffect(() => {
     applyTheme(currentTheme);
-  }, [currentTheme]);
+  }, [currentTheme, workspace.simple]);
 
   const selectTheme = (themeId: string) => {
     const allThemes = [...predefinedThemes, ...customThemes];

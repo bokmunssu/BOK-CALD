@@ -47,7 +47,7 @@
 }
 
 .sidebarHeader {
-  padding: $spacing-lg;
+  padding: $spacing-sm;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-background);
 }
@@ -91,7 +91,8 @@
 
 .sidebarContent {
   flex: 1;
-  padding: $spacing-lg;
+  min-height: 0;
+  padding: $spacing-sm;
   overflow-y: auto;
 }
 
