@@ -18,7 +18,7 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import styles from "./CarouselBanner.module.scss";
 
-const CarouselBanner: React.FC = () => {
+const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
   const [bannerImages, setBannerImages] = useRecoilState(bannerImagesState);
   const [carouselSettings] = useRecoilState(carouselSettingsState);
   const setStickerEditMode = useSetRecoilState(stickerEditModeState);
@@ -121,6 +121,7 @@ const CarouselBanner: React.FC = () => {
   return (
     <div
       className={styles.bannerContainer}
+      style={{ height }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}

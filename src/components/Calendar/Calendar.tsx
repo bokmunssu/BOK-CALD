@@ -1,6 +1,5 @@
 import {
   currentMonthState,
-  diaryEntriesState,
   eventsState,
   selectedDateState,
   selectedEventState,
@@ -17,7 +16,6 @@ import {
 import { generateRecurringEvents, isEventOnDate } from "@utils/eventUtils";
 import dayjs from "dayjs";
 import React from "react";
-import { MdCreate } from "react-icons/md";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./Calendar.module.scss";
 
@@ -26,7 +24,6 @@ const CalendarDay = React.memo(
   ({
     date,
     dayEvents,
-    hasDiary,
     isSelected,
     isToday,
     isInCurrentMonth,
@@ -35,7 +32,6 @@ const CalendarDay = React.memo(
   }: {
     date: Date;
     dayEvents: Event[];
-    hasDiary: boolean;
     isSelected: boolean;
     isToday: boolean;
     isInCurrentMonth: boolean;
@@ -76,11 +72,6 @@ const CalendarDay = React.memo(
               )}
             </div>
           )}
-          {hasDiary && (
-            <div className={styles.diaryIndicator} title="일기 작성됨">
-              <MdCreate />
-            </div>
-          )}
         </div>
       </div>
     );
@@ -92,7 +83,6 @@ const Calendar: React.FC = () => {
   const [selectedDate, setSelectedDate] = useRecoilState(selectedDateState);
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
-  const diaryEntries = useRecoilValue(diaryEntriesState);
   const viewMode = useRecoilValue(viewModeState);
 
   const calendarDays = React.useMemo(
@@ -156,14 +146,6 @@ const Calendar: React.FC = () => {
     [expandedEvents]
   );
 
-  const hasDiaryEntry = React.useCallback(
-    (date: Date): boolean => {
-      return diaryEntries.some((entry) =>
-        isSameDayAs(new Date(entry.date), date)
-      );
-    },
-    [diaryEntries]
-  );
 
   const handleDateClick = React.useCallback(
     (date: Date) => {
@@ -171,6 +153,9 @@ const Calendar: React.FC = () => {
     },
     [setSelectedDate]
   );
+
+  const dayEventsByDate = React.useMemo(() => new Map(calendarDays.map(date =>
+    [date.getTime(), getEventsForDate(date)])), [calendarDays, getEventsForDate]);
 
   const handleEventClick = React.useCallback(
     (event: Event, date: Date) => {
@@ -181,7 +166,7 @@ const Calendar: React.FC = () => {
   );
 
   return (
-    <div className={styles.calendar}>
+    <div className={styles.calendar} style={{ '--calendar-rows': calendarDays.length / 7 } as React.CSSProperties}>
       <div className={styles.weekDays}>
         {weekDays.map((day) => (
           <div key={day} className={styles.weekDay}>
@@ -194,8 +179,7 @@ const Calendar: React.FC = () => {
           <CalendarDay
             key={date.toISOString()}
             date={date}
-            dayEvents={getEventsForDate(date)}
-            hasDiary={hasDiaryEntry(date)}
+            dayEvents={dayEventsByDate.get(date.getTime())!}
             isSelected={isSameDayAs(date, selectedDate)}
             isToday={isCurrentDay(date)}
             isInCurrentMonth={isCurrentMonth(date, currentMonth)}

@@ -43,3 +43,7 @@ cursor.json
 .aider*
 .continue/
 claude
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo

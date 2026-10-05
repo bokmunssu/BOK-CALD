@@ -1,5 +1,6 @@
 import { atom } from 'recoil';
-import { Event, DiaryEntry, Theme, DDay, GoogleCalendarSyncState, TodoItem, MemoEntry, Category } from '@types';
+import { sharedEffect, restoreDates } from './sharedEffect';
+import { Event, Theme, DDay, GoogleCalendarSyncState, TodoItem, MemoEntry, Category } from '@types';
 import { Sticker, StickerLayout, UploadedStickerTemplate } from '@components/Styling/StickerPanel';
 import { startOfMonth } from 'date-fns';
 import { electronStore } from '@utils/electronStore';
@@ -74,66 +75,16 @@ export const predefinedThemes: Theme[] = [
 ];
 
 export const currentThemeState = atom<Theme>({
-  key: 'currentTheme',
-  default: defaultTheme,
-  effects: [
-    ({ setSelf, onSet }) => {
-      // 초기화 시 Electron Store에서 저장된 테마 불러오기
-      const loadTheme = async () => {
-        try {
-          const savedTheme = await electronStore.get('currentTheme');
-          if (savedTheme && savedTheme.id && savedTheme.colors) {
-            // 저장된 테마가 predefined에 있는지 확인
-            const predefinedTheme = predefinedThemes.find(t => t.id === savedTheme.id);
-            if (predefinedTheme) {
-              setSelf(predefinedTheme);
-            } else {
-              // 커스텀 테마인 경우
-              setSelf(savedTheme);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to load theme:', error);
-        }
-      };
-
-      loadTheme();
-
-      // 테마 변경 시 Electron Store에 즉시 저장
-      onSet((newTheme, _, isReset) => {
-        if (!isReset && newTheme) {
-          // 비동기로 저장하되 에러 처리
-          electronStore.set('currentTheme', newTheme).catch(error => {
-            console.error('Failed to save theme:', error);
-          });
-        }
-      });
-    }
-  ]
+  key: 'currentTheme', default: defaultTheme,
+  effects: [sharedEffect('currentTheme', value => {
+    if (!value?.id || !value?.colors) return defaultTheme;
+    return predefinedThemes.find(theme => theme.id === value.id) ?? value;
+  })],
 });
 
 export const customThemesState = atom<Theme[]>({
-  key: 'customThemes',
-  default: [],
-  effects: [
-    ({ setSelf, onSet }) => {
-      // Electron Store에서 저장된 커스텀 테마 목록 불러오기
-      electronStore.get('customThemes').then(savedThemes => {
-        if (savedThemes) {
-          setSelf(savedThemes);
-        }
-      }).catch(error => {
-        console.error('Failed to load custom themes:', error);
-      });
-
-      // 커스텀 테마 변경 시 Electron Store에 저장
-      onSet((newThemes, _, isReset) => {
-        if (!isReset) {
-          electronStore.set('customThemes', newThemes);
-        }
-      });
-    }
-  ]
+  key: 'customThemes', default: [],
+  effects: [sharedEffect('customThemes', value => Array.isArray(value) ? value : [])],
 });
 
 export const eventsState = atom<Event[]>({
@@ -164,30 +115,6 @@ export const eventsState = atom<Event[]>({
       onSet((newEvents, _, isReset) => {
         if (!isReset) {
           electronStore.set('events', newEvents);
-        }
-      });
-    }
-  ]
-});
-
-export const diaryEntriesState = atom<DiaryEntry[]>({
-  key: 'diaryEntries',
-  default: [],
-  effects: [
-    ({ setSelf, onSet }) => {
-      // Electron Store에서 저장된 일기 목록 불러오기
-      electronStore.get('diaryEntries').then(savedDiaries => {
-        if (savedDiaries) {
-          setSelf(savedDiaries);
-        }
-      }).catch(error => {
-        console.error('Failed to load diary entries:', error);
-      });
-
-      // 일기 변경 시 Electron Store에 저장
-      onSet((newDiaries, _, isReset) => {
-        if (!isReset) {
-          electronStore.set('diaryEntries', newDiaries);
         }
       });
     }
@@ -266,65 +193,13 @@ export const viewModeState = atom<'month' | 'week' | 'day'>({
 });
 
 export const dDaysState = atom<DDay[]>({
-  key: 'dDays',
-  default: [],
-  effects: [
-    ({ setSelf, onSet }) => {
-      // Electron Store에서 저장된 D-Day 목록 불러오기
-      electronStore.get('dDays').then(savedDDays => {
-        if (savedDDays) {
-          // Date 객체 복원
-          const restored = savedDDays.map((dday: any) => ({
-            ...dday,
-            targetDate: new Date(dday.targetDate),
-            createdAt: new Date(dday.createdAt)
-          }));
-          setSelf(restored);
-        }
-      }).catch(error => {
-        console.error('Failed to load D-Days:', error);
-      });
-
-      // D-Day 변경 시 Electron Store에 저장
-      onSet((newDDays, _, isReset) => {
-        if (!isReset) {
-          electronStore.set('dDays', newDDays);
-        }
-      });
-    }
-  ]
+  key: 'dDays', default: [],
+  effects: [sharedEffect('dDays', value => restoreDates(value, ["targetDate","createdAt"]), true)],
 });
 
 export const activeDDayState = atom<DDay | null>({
-  key: 'activeDDay',
-  default: null,
-  effects: [
-    ({ setSelf, onSet }) => {
-      // Electron Store에서 활성 D-Day 불러오기
-      electronStore.get('activeDDay').then(savedActiveDDay => {
-        if (savedActiveDDay) {
-          setSelf({
-            ...savedActiveDDay,
-            targetDate: new Date(savedActiveDDay.targetDate),
-            createdAt: new Date(savedActiveDDay.createdAt)
-          });
-        }
-      }).catch(error => {
-        console.error('Failed to load active D-Day:', error);
-      });
-
-      // 활성 D-Day 변경 시 Electron Store에 저장
-      onSet((newActiveDDay, _, isReset) => {
-        if (!isReset) {
-          if (newActiveDDay) {
-            electronStore.set('activeDDay', newActiveDDay);
-          } else {
-            electronStore.delete('activeDDay');
-          }
-        }
-      });
-    }
-  ]
+  key: 'activeDDay', default: null,
+  effects: [sharedEffect('activeDDay', value => value ? { ...value, targetDate: new Date(value.targetDate), createdAt: new Date(value.createdAt) } : null)],
 });
 
 // 배너 이미지 타입 정의
@@ -566,59 +441,14 @@ export const googleCalendarSyncState = atom<GoogleCalendarSyncState>({
 
 // 투두 리스트 상태
 export const todosState = atom<TodoItem[]>({
-  key: 'todos',
-  default: [],
-  effects: [
-    ({ setSelf, onSet }) => {
-      electronStore.get('todos').then(savedTodos => {
-        if (savedTodos && Array.isArray(savedTodos)) {
-          const todosWithDates = savedTodos.map((todo: any) => ({
-            ...todo,
-            date: new Date(todo.date),
-            createdAt: new Date(todo.createdAt)
-          }));
-          setSelf(todosWithDates);
-        }
-      }).catch(error => {
-        console.error('Failed to load todos:', error);
-      });
-
-      onSet((newTodos, _, isReset) => {
-        if (!isReset) {
-          electronStore.set('todos', newTodos);
-        }
-      });
-    }
-  ]
+  key: 'todos', default: [],
+  effects: [sharedEffect('todos', value => restoreDates(value, ["date","createdAt"]), true)],
 });
 
 // 메모 상태
 export const memosState = atom<MemoEntry[]>({
-  key: 'memos',
-  default: [],
-  effects: [
-    ({ setSelf, onSet }) => {
-      electronStore.get('memos').then(savedMemos => {
-        if (savedMemos && Array.isArray(savedMemos)) {
-          const memosWithDates = savedMemos.map((memo: any) => ({
-            ...memo,
-            date: new Date(memo.date),
-            createdAt: new Date(memo.createdAt),
-            updatedAt: new Date(memo.updatedAt)
-          }));
-          setSelf(memosWithDates);
-        }
-      }).catch(error => {
-        console.error('Failed to load memos:', error);
-      });
-
-      onSet((newMemos, _, isReset) => {
-        if (!isReset) {
-          electronStore.set('memos', newMemos);
-        }
-      });
-    }
-  ]
+  key: 'memos', default: [],
+  effects: [sharedEffect('memos', value => restoreDates(value, ["date","createdAt","updatedAt"]), true)],
 });
 
 // 카테고리 상태

@@ -2,13 +2,16 @@ import { app, BrowserWindow, ipcMain, Notification, shell } from "electron";
 import path from "path";
 import os from "os";
 import Store from "electron-store";
-import { readFileSync } from "fs";
+import { registerWidgets } from './widgets';
+import { mergeItems } from '../src/utils/workspace';
 import {
   startOAuthServer,
   stopOAuthServer,
   openAuthWindow,
 } from "./googleOAuthHandler";
 
+// Tests use a separate directory; never touch the user's real calendar data.
+if (process.env.BOK_CALD_TEST_USER_DATA) app.setPath('userData', process.env.BOK_CALD_TEST_USER_DATA);
 // Electron Store 초기화
 const store = new Store();
 
@@ -41,8 +44,8 @@ function createWindow() {
 
   const windowState = savedWindowState
     ? {
-        width: Math.max(savedWindowState.width || defaultBounds.width, 1024),
-        height: Math.max(savedWindowState.height || defaultBounds.height, 576),
+        width: Math.max(savedWindowState.width || defaultBounds.width, 760),
+        height: Math.max(savedWindowState.height || defaultBounds.height, 480),
         x: savedWindowState.x,
         y: savedWindowState.y,
       }
@@ -50,9 +53,9 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     ...windowState,
-    title: "신야캘린더",
-    minWidth: 1024,
-    minHeight: 576,
+    title: "BOK-CALD",
+    minWidth: 760,
+    minHeight: 480,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -115,6 +118,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerWidgets(store, () => {
+    if (!mainWindow) createWindow();
+    else { mainWindow.show(); mainWindow.restore(); mainWindow.focus(); }
+  });
   createWindow();
 
   app.on("activate", () => {
@@ -135,12 +142,27 @@ ipcMain.handle("store-get", (_, key: string) => {
   return store.get(key);
 });
 
-ipcMain.handle("store-set", (_, key: string, value: any) => {
+ipcMain.handle("store-set", (event, key: string, value: any) => {
   store.set(key, value);
+  broadcastStore(key, value, event.sender.id);
+});
+
+function broadcastStore(key: string, value: unknown, senderId?: number) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.webContents.id !== senderId) win.webContents.send('store-changed', key, value);
+  }
+}
+ipcMain.handle('store-merge-items', (event, key: string, previous: { id: string }[], next: { id: string }[]) => {
+  if (!['todos', 'memos', 'dDays'].includes(key) || !Array.isArray(previous) || !Array.isArray(next)
+    || [...previous, ...next].some(item => !item || typeof item.id !== 'string')) throw new Error('Invalid collection');
+  const merged = mergeItems((store.get(key) as { id: string }[]) || [], previous, next);
+  store.set(key, merged);
+  broadcastStore(key, merged, event.sender.id);
 });
 
 ipcMain.handle("store-delete", (_, key: string) => {
   store.delete(key);
+  broadcastStore(key, null);
 });
 
 ipcMain.handle("store-clear", () => {
@@ -156,10 +178,8 @@ ipcMain.handle("get-app-path", () => {
 });
 
 // Window control handlers
-ipcMain.handle("minimize-window", () => {
-  if (mainWindow) {
-    mainWindow.minimize();
-  }
+ipcMain.handle("minimize-window", event => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize();
 });
 
 ipcMain.handle("maximize-window", () => {
@@ -172,10 +192,8 @@ ipcMain.handle("maximize-window", () => {
   }
 });
 
-ipcMain.handle("close-window", () => {
-  if (mainWindow) {
-    mainWindow.close();
-  }
+ipcMain.handle("close-window", event => {
+  BrowserWindow.fromWebContents(event.sender)?.close();
 });
 
 ipcMain.handle("is-maximized", () => {
@@ -262,8 +280,8 @@ ipcMain.handle("resize-window", (_, width: number, height: number) => {
     const y = Math.round((screenHeight - height) / 2);
 
     // 최소/최대 크기 제한 확인
-    const minWidth = 1024;
-    const minHeight = 576;
+    const minWidth = 760;
+    const minHeight = 480;
     const maxWidth = primaryDisplay.bounds.width;
     const maxHeight = primaryDisplay.bounds.height;
 
@@ -314,20 +332,4 @@ ipcMain.handle("open-external", (_, url: string) => {
 });
 
 // 앱 버전 가져오기 (package.json에서)
-ipcMain.handle("get-app-version", () => {
-  try {
-    // Production: app.asar 내부에서 접근 시 __dirname 기준으로 찾기
-    let packageJsonPath = path.join(__dirname, "..", "package.json");
-
-    // app.asar로 패키징된 경우를 위한 대체 경로
-    if (!require("fs").existsSync(packageJsonPath)) {
-      packageJsonPath = path.join(process.resourcesPath, "app.asar", "package.json");
-    }
-
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-    return packageJson.version;
-  } catch (error) {
-    console.error("Failed to read app version:", error);
-    return "1.1.0"; // 폴백 버전
-  }
-});
+ipcMain.handle("get-app-version", () => app.getVersion());

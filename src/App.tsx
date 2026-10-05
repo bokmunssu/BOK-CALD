@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
 import {
   sidebarOpenState,
@@ -24,7 +24,11 @@ import LoadingOverlay from "@components/Common/LoadingOverlay";
 import { useTheme } from "@hooks/useTheme";
 import styles from "./App.module.scss";
 
+import WorkspaceControls from './components/Widgets/WorkspaceControls';
+import { workspaceSettingsState } from './store/workspace';
+
 function App() {
+  const settings = useRecoilValue(workspaceSettingsState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
   const [viewMode, setViewMode] = useRecoilState(viewModeState);
   const stickerEditMode = useRecoilValue(stickerEditModeState);
@@ -34,18 +38,19 @@ function App() {
   useTheme(); // Apply theme automatically
   const previousStickersRef = useRef(stickers);
   const isEditModeStartingRef = useRef(false);
-  const isWindows = useRef(false);
+  const [isWindows, setIsWindows] = useState(false);
+  const [restored, setRestored] = useState(false);
 
   // 플랫폼 확인 함수
   const checkPlatform = async () => {
     try {
       if (window.electronAPI?.getPlatform) {
         const platform = await window.electronAPI.getPlatform();
-        isWindows.current = platform === "win32";
+        setIsWindows(platform === "win32");
       }
     } catch (error) {
       console.error("Failed to get platform:", error);
-      isWindows.current = false;
+      setIsWindows(false);
     }
   };
   // 앱 시작 시 이전 상태 복원
@@ -66,6 +71,8 @@ function App() {
         }
       } catch (error) {
         console.error("Failed to restore app state:", error);
+      } finally {
+        setRestored(true);
       }
     };
 
@@ -81,34 +88,12 @@ function App() {
     };
   }, []);
 
-  // 앱 종료 시 현재 상태 저장
+  // Save after hydration, rather than relying on an IPC message during close.
   useEffect(() => {
-    const saveAppState = async () => {
-      try {
-        if (window.electronAPI?.store) {
-          // UI 상태 저장 (테마 제외 - atoms.ts의 effect에서 처리)
-          await window.electronAPI.store.set("appUIState", {
-            sidebarOpen,
-            viewMode,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to save app state:", error);
-      }
-    };
-
-    // 앱 종료 이벤트 리스너 등록
-    if (window.electronAPI?.onAppBeforeQuit) {
-      window.electronAPI.onAppBeforeQuit(saveAppState);
-    }
-
-    // 클린업: 이벤트 리스너 제거
-    return () => {
-      if (window.electronAPI?.removeAppBeforeQuitListener) {
-        window.electronAPI.removeAppBeforeQuitListener(saveAppState);
-      }
-    };
-  }, [sidebarOpen, viewMode]);
+    if (!restored) return;
+    window.electronAPI?.store?.set("appUIState", { sidebarOpen, viewMode })
+      .catch(error => console.error("Failed to save app state:", error));
+  }, [restored, sidebarOpen, viewMode]);
 
   // Update notifications when events change
   useEffect(() => {
@@ -152,7 +137,7 @@ function App() {
   return (
     <div
       className={`${styles.app} ${
-        isWindows.current ? styles.winSystemTitleBar : ""
+        isWindows ? styles.winSystemTitleBar : ""
       }`}
     >
       <Toaster
@@ -180,22 +165,23 @@ function App() {
 
       <TitleBar />
       <Header />
+      <WorkspaceControls />
       <div className={styles.mainContent}>
         {sidebarOpen ? (
           <ResizableLayout sidebar={<Sidebar />} minWidth={240} maxWidth={480}>
             <div className={styles.calendarContainer}>
-              <CarouselBanner />
+              {!settings.simple && settings.bannerVisible && <CarouselBanner height={settings.bannerHeight} />}
               {renderView()}
             </div>
           </ResizableLayout>
         ) : (
           <div className={styles.calendarContainer}>
-            <CarouselBanner />
+            {!settings.simple && settings.bannerVisible && <CarouselBanner height={settings.bannerHeight} />}
             {renderView()}
           </div>
         )}
       </div>
-      <StickerCanvas />
+      {!settings.simple && <StickerCanvas />}
       {stickerEditMode && (
         <FloatingToolbar
           onClose={handleEditComplete}

@@ -350,16 +350,18 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
       {!isAllDay && (
         <div className={styles.timeGroup}>
           <div className={styles.formGroup}>
-            <label>시작 시간</label>
+            <label htmlFor="event-start-time">시작 시간</label>
             <CustomTimePicker
+              id="event-start-time"
               value={startTime}
               onChange={setStartTime}
               placeholderText="시작 시간 선택"
             />
           </div>
           <div className={styles.formGroup}>
-            <label>종료 시간</label>
+            <label htmlFor="event-end-time">종료 시간</label>
             <CustomTimePicker
+              id="event-end-time"
               value={endTime}
               onChange={setEndTime}
               placeholderText="종료 시간 선택"
@@ -514,8 +516,9 @@ const EventForm: React.FC<EventFormProps> = ({ date, onClose, event }) => {
           )}
 
           <div className={styles.formGroup}>
-            <label>반복 종료</label>
+            <label htmlFor="recurrence-end">반복 종료</label>
             <CustomDatePicker
+              id="recurrence-end"
               selected={recurrence.endDate || null}
               onChange={(date) =>
                 setRecurrence({

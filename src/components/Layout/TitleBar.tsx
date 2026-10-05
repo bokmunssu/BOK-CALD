@@ -12,7 +12,7 @@ const TitleBar: React.FC = () => {
     }
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 60000);
 
     return () => clearInterval(timer);
   }, []);

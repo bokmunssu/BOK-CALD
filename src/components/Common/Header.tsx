@@ -147,7 +147,7 @@ const Header: React.FC = () => {
 
   const handleResetStore = async () => {
     const confirmed = window.confirm(
-      "모든 데이터를 초기화하시겠습니까?\n이벤트, 일기, 구글 캘린더 연동 정보 등 모든 데이터가 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다."
+      "모든 일정을 삭제하시겠습니까?\n모든 일정이 삭제됩니다. 메모, 할 일, 테마와 연동 설정은 유지됩니다.\n\n이 작업은 되돌릴 수 없습니다."
     );
 
     if (!confirmed) return;
@@ -156,7 +156,7 @@ const Header: React.FC = () => {
       // 모든 store 데이터 삭제
       await electronStore.set("events", []);
 
-      toast.success("모든 데이터가 초기화되었습니다. 페이지를 새로고침합니다.");
+      toast.success("모든 일정이 삭제되었습니다. 페이지를 새로고침합니다.");
 
       // 페이지 새로고침
       setTimeout(() => {
@@ -179,6 +179,10 @@ const Header: React.FC = () => {
 
       toast.dismiss();
 
+      if (updateInfo.status === 'unavailable') {
+        toast.error('업데이트를 확인하지 못했습니다. 네트워크 또는 릴리즈 게시 여부를 확인해 주세요.');
+        return;
+      }
       if (updateInfo.hasUpdate) {
         const confirmed = window.confirm(
           `새로운 버전이 있습니다!\n\n` +
@@ -188,10 +192,8 @@ const Header: React.FC = () => {
         );
 
         if (confirmed && updateInfo.url) {
-          window.open(
-            "https://www.postype.com/@sungbaeking/post/20527213",
-            "_blank"
-          );
+          if (window.electronAPI?.openExternal) await window.electronAPI.openExternal(updateInfo.url);
+          else window.open(updateInfo.url, '_blank', 'noopener');
         }
       } else {
         toast.success(

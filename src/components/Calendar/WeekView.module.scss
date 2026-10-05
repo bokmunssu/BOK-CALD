@@ -2,7 +2,8 @@
 @use '@styles/mixins' as *;
 
 .weekView {
-  height: 100%;
+  flex: 1;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
@@ -77,13 +78,6 @@
   font-size: $font-size-large;
   font-weight: 600;
   color: var(--color-text);
-}
-
-.diaryDot {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 12px;
 }
 
 .weekContent {
