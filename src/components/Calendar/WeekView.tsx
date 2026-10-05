@@ -19,6 +19,7 @@ import {
 import React from "react";
 import {isMultiDayEvent,layoutEventSpans} from "../../utils/eventSpans";
 import SpanningEvents from "./SpanningEvents";
+import HolidayDate from "./HolidayDate";
 import { workspaceSettingsState } from '../../store/workspace';
 import { lunarLabel } from "../../utils/lunar";
 import { koreanHolidayName } from '../../utils/holidays';
@@ -216,7 +217,7 @@ const WeekView: React.FC = () => {
               onClick={() => setSelectedDate(date)}
             >
               <div className={styles.dayName}>{weekDayNames[index]}</div>
-              <div className={styles.dayNumber} title={settings.koreanHolidays ? koreanHolidayName(date) : undefined} style={settings.koreanHolidays && koreanHolidayName(date) ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
+              <HolidayDate className={styles.dayNumber} holiday={settings.koreanHolidays ? koreanHolidayName(date) : ''}>{date.getDate()}</HolidayDate>
               {settings.lunarVisible && <small>{lunarLabel(date)}</small>}
             </div>
           );

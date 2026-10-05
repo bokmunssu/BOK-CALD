@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import React from "react";
 import { isMultiDayEvent, layoutEventSpans } from "../../utils/eventSpans";
 import SpanningEvents from "./SpanningEvents";
+import HolidayDate from "./HolidayDate";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./Calendar.module.scss";
 import { workspaceSettingsState } from '../../store/workspace';
@@ -55,9 +56,10 @@ const CalendarDay = React.memo(
         ${isToday ? styles.today : ""}`}
         onClick={() => onDateClick(date)}
       >
-        <div className={styles.dayNumber} title={holiday || undefined} style={holiday ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
-        {lunar && <small style={{fontSize:9,opacity:0.65}}>{lunar}</small>}
-        {holiday && <small className={styles.holidayName}>{holiday}</small>}
+        <div className={styles.dayHeading}>
+          <HolidayDate holiday={holiday} className={styles.dayNumber}>{date.getDate()}</HolidayDate>
+          {lunar && <small style={{fontSize:9,opacity:0.65}}>{lunar}</small>}
+        </div>
         <div className={styles.dayContent}>
           {dayEvents.length > 0 && (
             <div className={styles.eventList}>

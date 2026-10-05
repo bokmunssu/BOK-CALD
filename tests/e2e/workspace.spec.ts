@@ -7,6 +7,41 @@ import { randomBytes } from 'node:crypto';
 let app: ElectronApplication;
 let calendar: Page;
 
+test('connected rows do not clip bottom schedules in a six-week small calendar',async({},info)=>{
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(760,480));
+  await calendar.evaluate(async()=>{
+    const events=Array.from({length:5},(_,i)=>({id:`range-${i}`,title:`겹친 기간 ${i}`,date:new Date(2026,7,30),endDate:new Date(2026,8,4),isAllDay:true,color:'#7a99d6'}));
+    for(let i=0;i<3;i++)events.push({id:`daily-${i}`,title:`하단 일반 일정 ${i}`,date:new Date(2026,7,31),endDate:new Date(2026,7,31),isAllDay:true,color:'#d699a7'});
+    await window.electronAPI.store.set('events',events);
+  });
+  await calendar.reload();
+  await calendar.getByRole('button',{name:'←',exact:true}).click();await calendar.getByRole('button',{name:'←',exact:true}).click();
+  await calendar.getByLabel('기간 일정 표시').selectOption('connected');await calendar.getByLabel('음력 표시',{exact:true}).check();
+  const days=calendar.locator('[class*="calendarDay_"]');await expect(days).toHaveCount(42);
+  const last=days.last();await last.scrollIntoViewIfNeeded();
+  const cell=calendar.locator('[class*="calendarDay_"]').filter({has:calendar.getByText('하단 일반 일정 0',{exact:true})});
+  const card=cell.getByText('하단 일반 일정 1',{exact:true}),more=cell.getByText('+1개 더',{exact:true});
+  await expect(card).toBeVisible();await expect(more).toBeVisible();
+  const bounds=await cell.boundingBox(),bottom=await more.boundingBox();
+  expect(bottom!.y+bottom!.height).toBeLessThanOrEqual(bounds!.y+bounds!.height+1);
+  const bars=calendar.locator('[data-span-id="range-4"]');await expect(bars).toHaveCount(1);
+  const bar=await bars.boundingBox(), item=await card.boundingBox();expect(item!.y).toBeGreaterThanOrEqual(bar!.y+bar!.height);
+  const lastBounds=await last.boundingBox();expect(lastBounds!.y+lastBounds!.height).toBeLessThanOrEqual((await calendar.evaluate(()=>innerHeight))+1);
+  await calendar.screenshot({path:info.outputPath('connected-bottom-schedules.png')});
+});
+
+test('holiday speech bubble follows hover, click and keyboard focus without taking a calendar row',async({},info)=>{
+  const date=calendar.getByRole('button',{name:'5일 공휴일 정보',exact:true});
+  await expect(calendar.getByRole('tooltip')).toHaveCount(0);
+  await date.hover();await expect(calendar.getByRole('tooltip')).toHaveText('대체공휴일(개천절)');
+  await calendar.screenshot({path:info.outputPath('holiday-bubble.png')});
+  await calendar.getByRole('button',{name:'오늘',exact:true}).hover();await expect(calendar.getByRole('tooltip')).toHaveCount(0);
+  await date.click();await expect(calendar.getByRole('tooltip')).toBeVisible();
+  await calendar.getByRole('button',{name:'오늘',exact:true}).click();await expect(calendar.getByRole('tooltip')).toHaveCount(0);
+  await date.focus();await expect(calendar.getByRole('tooltip')).toBeVisible();await calendar.keyboard.press('Tab');await expect(calendar.getByRole('tooltip')).toHaveCount(0);
+  await calendar.getByLabel('한국 공휴일 표시').uncheck();await expect(date).toHaveCount(0);await expect(calendar.getByRole('tooltip')).toHaveCount(0);
+});
+
 test('connected multi-day bars span the date columns and the choice survives reload', async ({},info)=>{
   await calendar.evaluate(async()=>{
     const date=new Date();date.setDate(5);const end=new Date(date);end.setDate(9);
@@ -217,10 +252,10 @@ test('simple mode keeps theme colors and Korean holiday highlighting is optional
   await calendar.getByLabel('심플 모드').uncheck();
   await calendar.getByLabel('심플 모드').check();
   await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim())).toBe('#B6D7FF');
-  const holiday = calendar.locator('[class*="calendarDay_"]').filter({ has: calendar.locator('[title="개천절"]') });
+  const holiday = calendar.locator('[class*="calendarDay_"]').filter({ has: calendar.getByRole('button',{name:'3일 공휴일 정보',exact:true}) });
   await expect(holiday).toHaveCount(1);
   await calendar.getByLabel('한국 공휴일 표시').uncheck();
-  await expect(calendar.locator('[title="개천절"]')).toHaveCount(0);
+  await expect(calendar.getByRole('button',{name:'3일 공휴일 정보',exact:true})).toHaveCount(0);
 });
 test('D-DAY management opens each individual countdown window', async ({}, info) => {
   await calendar.evaluate(() => window.electronAPI.store.set('dDays', ['day-a', 'day-b'].map((id, i) => ({ id, title: i ? '여행' : '마감', targetDate: '2026-12-01', createdAt: new Date().toISOString(), isActive: false }))));

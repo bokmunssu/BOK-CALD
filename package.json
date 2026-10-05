@@ -1,6 +1,6 @@
 {
   "name": "tomo-calendar",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "TOMO CALENDAR · 간결한 캘린더와 독립 위젯",
   "main": "dist-electron/main.js",
   "author": {
