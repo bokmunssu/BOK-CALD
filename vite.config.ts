@@ -12,7 +12,10 @@ export default defineConfig(({ mode }) => ({
       {
         entry: 'electron/main.ts',
         vite: {
-          define: { 'process.env.TOMO_MICROSOFT_CLIENT_ID': JSON.stringify(process.env.TOMO_MICROSOFT_CLIENT_ID || loadEnv(mode, process.cwd(), 'TOMO_').TOMO_MICROSOFT_CLIENT_ID || '') },
+          define: {
+            'process.env.TOMO_GOOGLE_CLIENT_ID': JSON.stringify(process.env.VITE_TOMO_GOOGLE_CLIENT_ID || loadEnv(mode, process.cwd(), 'VITE_TOMO_').VITE_TOMO_GOOGLE_CLIENT_ID || ''),
+            'process.env.TOMO_GOOGLE_CLIENT_SECRET': JSON.stringify(process.env.VITE_TOMO_GOOGLE_CLIENT_SECRET || loadEnv(mode, process.cwd(), 'VITE_TOMO_').VITE_TOMO_GOOGLE_CLIENT_SECRET || ''),
+            'process.env.TOMO_MICROSOFT_CLIENT_ID': JSON.stringify(process.env.TOMO_MICROSOFT_CLIENT_ID || loadEnv(mode, process.cwd(), 'TOMO_').TOMO_MICROSOFT_CLIENT_ID || '') },
           build: {
             outDir: 'dist-electron',
             rollupOptions: {

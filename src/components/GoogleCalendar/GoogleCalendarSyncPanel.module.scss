@@ -617,3 +617,6 @@
     flex-shrink: 0;
   }
 }
+.personalSettings {margin:12px 0;padding:10px;border:1px solid var(--color-border);border-radius:8px;text-align:left;font-size:12px;summary{cursor:pointer;}p,small{display:block;margin:8px 0;color:var(--color-text-secondary);}label{display:grid;gap:4px;margin:8px 0;}input{font:inherit;padding:7px;border:1px solid var(--color-border);border-radius:6px;}button{padding:6px 10px;}}
+.content {background:var(--color-surface);color:var(--color-text);}
+.modal {z-index:10000;}

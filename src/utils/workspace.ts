@@ -1,10 +1,11 @@
 export type WidgetKind = 'todo' | 'memo' | 'dday' | 'pomodoro' | 'worktime';
-export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number; koreanHolidays: boolean }
+export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number; koreanHolidays: boolean; fontFamily: string }
 export const normalizeSettings = (value: Partial<WorkspaceSettings> = {}): WorkspaceSettings => ({
   simple: typeof value.simple === 'boolean' ? value.simple : true,
   bannerVisible: typeof value.bannerVisible === 'boolean' ? value.bannerVisible : true,
   bannerHeight: Number.isFinite(value.bannerHeight) ? Math.max(40, Math.min(240, value.bannerHeight!)) : 100,
   koreanHolidays: value.koreanHolidays !== false,
+  fontFamily: typeof value.fontFamily === 'string' ? value.fontFamily.slice(0, 200) : '',
 });
 
 // Apply only changed records to the latest main-process snapshot, so separate
@@ -44,3 +45,5 @@ export function advanceTimer(state: TimerState, elapsedMs: number, active: boole
     sessions: state.sessions + (state.phase === 'focus' ? 1 : 0),
     remainingMs: (phase === 'focus' ? state.focusMinutes : state.breakMinutes) * 60000 };
 }
+
+export interface WindowChoice extends ForegroundWindow { id: string; thumbnail: string; icon?: string }

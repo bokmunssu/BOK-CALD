@@ -1,10 +1,6 @@
 import { Event, GoogleCalendarAuth, GoogleCalendarEvent } from "@types";
 import { electronStore } from "@utils/electronStore";
 
-const SCOPES =
-  "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email openid";
-const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
-const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
 type CalendarCache = {
@@ -20,9 +16,7 @@ type CalendarCache = {
 
 export class GoogleCalendarService {
   private static instance: GoogleCalendarService;
-  private clientId: string;
-  private clientSecret: string;
-  private redirectUri: string;
+
 
   // 캐싱 레이어
   private calendarListCache: CalendarCache = {
@@ -34,12 +28,7 @@ export class GoogleCalendarService {
   // Request Deduplication
   private pendingRequests = new Map<string, Promise<any>>();
 
-  private constructor() {
-    this.clientId = import.meta.env.VITE_TOMO_GOOGLE_CLIENT_ID || "";
-    this.clientSecret = import.meta.env.VITE_TOMO_GOOGLE_CLIENT_SECRET || "";
-    // 로컬 loopback 주소 사용 (구글이 권장하는 데스크톱 앱 방식)
-    this.redirectUri = "http://localhost:8080";
-  }
+  private constructor() {}
 
   static getInstance(): GoogleCalendarService {
     if (!GoogleCalendarService.instance) {
@@ -48,110 +37,8 @@ export class GoogleCalendarService {
     return GoogleCalendarService.instance;
   }
 
-  /**
-   * OAuth 인증 URL 생성
-   */
-  getAuthUrl(): string {
-    if (!this.clientId) throw new Error("이 빌드의 Google 로그인은 배포자 앱 등록을 준비 중입니다.");
-    const params = new URLSearchParams({
-      client_id: this.clientId,
-      redirect_uri: this.redirectUri,
-      response_type: "code",
-      scope: SCOPES,
-      access_type: "offline",
-      prompt: "consent",
-    });
-
-    return `${AUTH_ENDPOINT}?${params.toString()}`;
-  }
-
-  /**
-   * 인증 코드로 토큰 교환
-   */
-  async getTokenFromCode(code: string): Promise<GoogleCalendarAuth> {
-    const response = await fetch(TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        code: code.trim(), // 공백 제거
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        redirect_uri: this.redirectUri,
-        grant_type: "authorization_code",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Token exchange error:", errorData);
-      throw new Error(
-        `Failed to exchange code for token: ${JSON.stringify(errorData)}`
-      );
-    }
-
-    const data = await response.json();
-    const auth: GoogleCalendarAuth = {
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      scope: data.scope,
-      token_type: data.token_type,
-      expiry_date: Date.now() + data.expires_in * 1000,
-    };
-
-    await electronStore.set("googleCalendarAuth", auth);
-    return auth;
-  }
-
-  /**
-   * 저장된 토큰 가져오기
-   */
-  async getStoredAuth(): Promise<GoogleCalendarAuth | null> {
-    try {
-      const auth = (await electronStore.get(
-        "googleCalendarAuth"
-      )) as GoogleCalendarAuth;
-      return auth || null;
-    } catch (error) {
-      console.error("Failed to get stored auth:", error);
-      return null;
-    }
-  }
-
-  /**
-   * 토큰 갱신
-   */
-  async refreshAccessToken(refreshToken: string): Promise<GoogleCalendarAuth> {
-    const response = await fetch(TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        refresh_token: refreshToken,
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        grant_type: "refresh_token",
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to refresh token");
-    }
-
-    const data = await response.json();
-    const auth: GoogleCalendarAuth = {
-      access_token: data.access_token,
-      refresh_token: refreshToken, // Keep the original refresh token
-      scope: data.scope,
-      token_type: data.token_type,
-      expiry_date: Date.now() + data.expires_in * 1000,
-    };
-
-    await electronStore.set("googleCalendarAuth", auth);
-    return auth;
-  }
+  async getStoredAuth(): Promise<GoogleCalendarAuth | null> { return window.electronAPI.googleAccount.auth(); }
+  async refreshAccessToken(_refreshToken: string): Promise<GoogleCalendarAuth> { return window.electronAPI.googleAccount.refresh(); }
 
   /**
    * 연결 해제
@@ -163,11 +50,12 @@ export class GoogleCalendarService {
       await fetch(
         `https://oauth2.googleapis.com/revoke?token=${auth.access_token}`,
         {
-          method: "POST",
+          method: "POST", signal: AbortSignal.timeout(10000),
         }
-      );
+      ).catch(() => undefined); // 오프라인에서도 로컬 연결은 해제합니다.
     }
 
+    await window.electronAPI.googleAccount.disconnect();
     await electronStore.delete("googleCalendarAuth");
     await electronStore.delete("googleCalendarSyncState");
 

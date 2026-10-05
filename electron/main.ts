@@ -2,14 +2,11 @@ import { app, BrowserWindow, ipcMain, Notification, shell } from "electron";
 import path from "path";
 import os from "os";
 import Store from "electron-store";
+import { registerGoogleAccount } from './googleAccount';
 import { registerMicrosoftTodo } from './microsoftTodo';
+import { registerSystemPreferences } from './systemPreferences';
 import { registerWidgets } from './widgets';
 import { mergeItems } from '../src/utils/workspace';
-import {
-  startOAuthServer,
-  stopOAuthServer,
-  openAuthWindow,
-} from "./googleOAuthHandler";
 
 // Tests use a separate directory; never touch the user's real calendar data.
 app.setName('TOMO CALENDAR');
@@ -122,6 +119,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerGoogleAccount();
+  registerSystemPreferences();
   registerMicrosoftTodo(store, broadcastStore);
   registerWidgets(store, () => {
     if (!mainWindow) createWindow();
@@ -309,31 +308,8 @@ ipcMain.handle("resize-window", (_, width: number, height: number) => {
   throw new Error("Main window is not available");
 });
 
-// Google OAuth 핸들러
-ipcMain.handle("google-oauth-start", async (_) => {
-  if (!mainWindow) {
-    throw new Error("Main window is not available");
-  }
-
-  try {
-    const code = await startOAuthServer(mainWindow);
-    return { success: true, code };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle("google-oauth-stop", () => {
-  stopOAuthServer();
-});
-
 ipcMain.handle("open-external", (_, url: string) => {
-  // OAuth URL인 경우 Electron 창으로 열기
-  if (url.includes("accounts.google.com/o/oauth2")) {
-    openAuthWindow(url);
-  } else {
-    shell.openExternal(url);
-  }
+  return shell.openExternal(url);
 });
 
 // 앱 버전 가져오기 (package.json에서)

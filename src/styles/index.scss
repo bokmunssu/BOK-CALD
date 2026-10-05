@@ -18,7 +18,7 @@ html {
 
 body {
   height: 100%;
-  font-family: $font-primary;
+  font-family: var(--app-font-family, #{$font-primary});
   font-size: $font-size-base;
   font-weight: $font-weight-regular;
   line-height: 1.5;
@@ -52,3 +52,4 @@ body {
     background: rgba(0, 0, 0, 0.2);
   }
 }
+button, input, select, textarea {font-family:inherit;}

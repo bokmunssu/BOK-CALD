@@ -6,6 +6,7 @@ import styles from './Widgets.module.scss';
 import type { WidgetKind } from '../../utils/workspace';
 import Notes from './Notes';
 import PinButton from './PinButton';
+import FontSettings from './FontSettings';
 
 export function openWidget(kind: WidgetKind, id?: string) {
   if (!window.electronAPI?.openWidget) { toast.error('독립 위젯은 데스크톱 앱에서 열 수 있습니다.'); return; }
@@ -14,7 +15,7 @@ export function openWidget(kind: WidgetKind, id?: string) {
 export default function WorkspaceControls() {
   const [settings, setSettings] = useRecoilState(workspaceSettingsState);
   return <div className={styles.workspaceBar}>
-    <PinButton /><label className={styles.compactToggle}><input type="checkbox" checked={settings.simple} onChange={e => setSettings(s => ({ ...s, simple: e.target.checked }))} />심플 모드</label>
+    <PinButton /><FontSettings /><label className={styles.compactToggle}><input type="checkbox" checked={settings.simple} onChange={e => setSettings(s => ({ ...s, simple: e.target.checked }))} />심플 모드</label>
     <details className={styles.bannerMenu}><summary title="배너 표시와 높이 조절"><FiImage /> 배너 설정</summary><div className={styles.popover}>
       <strong>캘린더 배너</strong><label><input type="checkbox" checked={settings.bannerVisible} onChange={e => setSettings(s => ({ ...s, bannerVisible: e.target.checked, ...(e.target.checked ? { simple: false } : {}) }))} />배너 표시</label>
       <label className={styles.bannerSize}>높이 <input aria-label="배너 높이" type="range" min="40" max="240" step="10" value={settings.bannerHeight} onChange={e => setSettings(s => ({ ...s, bannerHeight: Number(e.target.value), bannerVisible: true, simple: false }))} /><output>{settings.bannerHeight}px</output></label>
