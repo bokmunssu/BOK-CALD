@@ -23,6 +23,7 @@ import { getCurrentVersion, checkForUpdates } from "@utils/version";
 import { useGoogleCalendarSync } from "@hooks/useGoogleCalendarSync";
 import styles from "./Header.module.scss";
 import GoogleTasksPanel from '../Widgets/GoogleTasksPanel';
+import GoogleTasksIcon from './GoogleTasksIcon';
 
 // Lazy load Google Calendar component
 const GoogleCalendarSyncPanel = React.lazy(() =>
@@ -369,7 +370,7 @@ const Header: React.FC = () => {
                 <FcGoogle size={18} />
                 구글 캘린더
               </button>
-              <button onClick={() => { setShowGoogleTasks(true); setShowMenu(false); }}>✓ Google Tasks</button>
+              <button onClick={() => { setShowGoogleTasks(true); setShowMenu(false); }}><GoogleTasksIcon size={15} /> Google Tasks</button>
 
 
               <button

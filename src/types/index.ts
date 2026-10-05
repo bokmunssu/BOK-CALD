@@ -113,6 +113,8 @@ export interface TodoItem {
   updatedAt?: Date;
   dueDate?: string;
   tags?: string[];
+  taskListId?: string;
+  taskListAccountId?: string;
   googleTasks?: { accountId: string; listId: string; taskId: string };
   microsoft?: { accountId: string; listId: string; taskId: string };
 }

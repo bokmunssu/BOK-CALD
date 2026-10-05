@@ -6,6 +6,7 @@ import type {
   GoogleTasksStatus,
 } from "../../types/googleTasks";
 import styles from "./Widgets.module.scss";
+import GoogleTasksIcon from "../Common/GoogleTasksIcon";
 
 export default function GoogleTasksPanel({ onClose }: { onClose: () => void }) {
   const api = window.electronAPI?.googleTasks;
@@ -68,7 +69,7 @@ export default function GoogleTasksPanel({ onClose }: { onClose: () => void }) {
         aria-labelledby="google-tasks-title"
       >
         <header className={styles.sectionHeading}>
-          <span className={styles.microsoftMark}>✓</span>
+          <GoogleTasksIcon size={24} />
           <h2 id="google-tasks-title">Google Tasks</h2>
           <span className={styles.spacer} />
           <button
@@ -85,7 +86,7 @@ export default function GoogleTasksPanel({ onClose }: { onClose: () => void }) {
         </p>
         {!state.connected ? (
           <div className={styles.connectionIntro}>
-            <div className={styles.connectionIcon}>✓</div>
+            <div className={styles.connectionIcon}><GoogleTasksIcon size={32} /></div>
             <strong>기기 밖에서도 이어지는 할 일</strong>
             <p>
               로그인하고 목록을 선택하면 제목·기한·완료 상태가 양방향으로
@@ -153,6 +154,7 @@ export default function GoogleTasksPanel({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setSelected(e.target.value)}
               >
                 <option value="">목록 선택</option>
+                <option value="__all__">전체 목록 동기화</option>
                 {lists.map((list) => (
                   <option key={list.id} value={list.id}>
                     {list.title}
@@ -207,7 +209,7 @@ export default function GoogleTasksPanel({ onClose }: { onClose: () => void }) {
             <p className={styles.message}>
               아직 연결하지 않은 이 앱의 할 일은 선택한 목록에 추가됩니다.
               삭제도 양쪽에 반영됩니다. 같은 항목을 동시에 수정하면 로컬 사본을
-              남겨 내용을 보존합니다. 중요 표시와 태그는 이 앱에만 저장됩니다.
+              남겨 내용을 보존합니다. 목록 변경도 Google Tasks에 반영됩니다. 중요 표시는 Google API가 지원하지 않아 TOMO에만 저장됩니다.
               Google 캘린더와 로그인은 별도로 관리됩니다.
             </p>
             {state.lastSync && (
@@ -223,13 +225,13 @@ export default function GoogleTasksPanel({ onClose }: { onClose: () => void }) {
             onClick={() => {
               if (
                 confirm(
-                  "Google Tasks 웹에서 중복/누락 항목을 확인했나요? 다음 동기화에서 확인되지 않은 항목을 다시 추가할 수 있습니다.",
+                  "Google Tasks 웹에서 중복/누락 항목을 확인했나요? 이동/추가 결과를 확인하세요. 다음 동기화에서 확인되지 않은 항목을 다시 추가할 수 있습니다.",
                 )
               )
                 run(async () => setState(await api.resolveCreate()));
             }}
           >
-            추가 결과 확인 후 재시도
+            변경 결과 확인 후 재시도
           </button>
         )}
         {state.error && (

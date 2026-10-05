@@ -3,7 +3,6 @@ import {
   eventsState,
   selectedDateState,
   selectedEventState,
-  viewModeState,
 } from "@store/atoms";
 import { Event } from "@types";
 import {
@@ -16,6 +15,9 @@ import {
 import { generateRecurringEvents, isEventOnDate } from "@utils/eventUtils";
 import dayjs from "dayjs";
 import React from "react";
+import { isMultiDayEvent, layoutEventSpans } from "../../utils/eventSpans";
+import SpanningEvents from "./SpanningEvents";
+import HolidayDate from "./HolidayDate";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styles from "./Calendar.module.scss";
 import { workspaceSettingsState } from '../../store/workspace';
@@ -54,9 +56,10 @@ const CalendarDay = React.memo(
         ${isToday ? styles.today : ""}`}
         onClick={() => onDateClick(date)}
       >
-        <div className={styles.dayNumber} title={holiday || undefined} style={holiday ? { color: '#d45d6a' } : undefined}>{date.getDate()}</div>
-        {lunar && <small style={{fontSize:9,opacity:0.65}}>{lunar}</small>}
-        {holiday && <small className={styles.holidayName}>{holiday}</small>}
+        <div className={styles.dayHeading}>
+          <HolidayDate holiday={holiday} className={styles.dayNumber}>{date.getDate()}</HolidayDate>
+          {lunar && <small style={{fontSize:9,opacity:0.65}}>{lunar}</small>}
+        </div>
         <div className={styles.dayContent}>
           {dayEvents.length > 0 && (
             <div className={styles.eventList}>
@@ -92,7 +95,7 @@ const Calendar: React.FC = () => {
   const [selectedDate, setSelectedDate] = useRecoilState(selectedDateState);
   const setSelectedEvent = useSetRecoilState(selectedEventState);
   const events = useRecoilValue(eventsState);
-  const viewMode = useRecoilValue(viewModeState);
+
   const settings = useRecoilValue(workspaceSettingsState);
 
   const calendarDays = React.useMemo(
@@ -159,9 +162,10 @@ const Calendar: React.FC = () => {
 
   const handleDateClick = React.useCallback(
     (date: Date) => {
+      setSelectedEvent(null);
       setSelectedDate(date);
     },
-    [setSelectedDate]
+    [setSelectedDate,setSelectedEvent]
   );
 
   const dayEventsByDate = React.useMemo(() => new Map(calendarDays.map(date =>
@@ -185,21 +189,18 @@ const Calendar: React.FC = () => {
         ))}
       </div>
       {settings.koreanHolidays && !hasHolidayData(currentMonth.getFullYear()) && <small className={styles.holidayNotice}>이 연도의 공휴일 정보는 아직 준비되지 않았습니다.</small>}
-      <div className={styles.calendarGrid}>
-        {calendarDays.map((date) => (
-          <CalendarDay
-            key={date.toISOString()}
-            date={date}
-            dayEvents={dayEventsByDate.get(date.getTime())!}
-            isSelected={isSameDayAs(date, selectedDate)}
-            isToday={isCurrentDay(date)}
-            isInCurrentMonth={isCurrentMonth(date, currentMonth)}
-            lunar={settings.lunarVisible ? lunarLabel(date) : ""}
-            holiday={settings.koreanHolidays ? koreanHolidayName(date) : ''}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-          />
-        ))}
+      <div className={`${styles.calendarGrid} ${settings.multiDayDisplay === 'connected' ? styles.connectedGrid : ''}`}>
+        {settings.multiDayDisplay === 'daily' ? calendarDays.map(date=>(
+          <CalendarDay key={date.toISOString()} date={date} dayEvents={dayEventsByDate.get(date.getTime())!} isSelected={isSameDayAs(date,selectedDate)} isToday={isCurrentDay(date)} isInCurrentMonth={isCurrentMonth(date,currentMonth)} lunar={settings.lunarVisible?lunarLabel(date):''} holiday={settings.koreanHolidays?koreanHolidayName(date):''} onDateClick={handleDateClick} onEventClick={handleEventClick} />
+        )) : Array.from({length:calendarDays.length/7},(_,row)=>{
+          const days=calendarDays.slice(row*7,row*7+7);
+          const spans=layoutEventSpans(expandedEvents,days);
+          const lanes=Math.max(0,...spans.map(s=>s.lane+1));
+          return <div key={row} className={styles.calendarWeek} style={{'--span-space':`${lanes*24}px`,minHeight:88+lanes*24} as React.CSSProperties}>
+            {days.map(date=><CalendarDay key={date.toISOString()} date={date} dayEvents={dayEventsByDate.get(date.getTime())!.filter(e=>!isMultiDayEvent(e))} isSelected={isSameDayAs(date,selectedDate)} isToday={isCurrentDay(date)} isInCurrentMonth={isCurrentMonth(date,currentMonth)} lunar={settings.lunarVisible?lunarLabel(date):''} holiday={settings.koreanHolidays?koreanHolidayName(date):''} onDateClick={handleDateClick} onEventClick={handleEventClick} />)}
+            {!!spans.length && <div className={styles.weekSpans}><SpanningEvents spans={spans} onClick={event=>handleEventClick(event,days.find(d=>isEventOnDate(event,d))!)} /></div>}
+          </div>;
+        })}
       </div>
     </div>
   );

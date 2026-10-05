@@ -28,9 +28,10 @@ export function applyCollectionPatch<T extends { id: string }>(current: T[], pat
   });
   return [...result, ...[...changes.values()].filter(item => !removed.has(item.id)).map(item => ({ ...item.fields, id: item.id } as T))];
 }
-export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number; koreanHolidays: boolean; lunarVisible: boolean; fontFamily: string }
+export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number; koreanHolidays: boolean; lunarVisible: boolean; multiDayDisplay: 'daily' | 'connected'; fontFamily: string }
 export const normalizeSettings = (value: Partial<WorkspaceSettings> = {}): WorkspaceSettings => ({
   lunarVisible: value.lunarVisible === true,
+  multiDayDisplay: value.multiDayDisplay === 'connected' ? 'connected' : 'daily',
   simple: typeof value.simple === 'boolean' ? value.simple : true,
   bannerVisible: typeof value.bannerVisible === 'boolean' ? value.bannerVisible : true,
   bannerHeight: Number.isFinite(value.bannerHeight) ? Math.max(40, Math.min(240, value.bannerHeight!)) : 100,
