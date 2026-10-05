@@ -209,6 +209,7 @@ export interface BannerImage {
   order: number; // 순서 (0-4)
   positionX?: number;
   positionY?: number;
+  zoom?: number;
 }
 
 // Carousel 설정 타입 정의

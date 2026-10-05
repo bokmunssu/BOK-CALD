@@ -48,13 +48,12 @@ describe('independent widget content', () => {
       expect.objectContaining({ id: 'a', content: '수정 완료' }), expect.objectContaining({ id: 'b', content: '두 번째' }),
     ])));
   });
-  it('offers reversible simple mode and banner controls', () => {
+  it('keeps simple mode compact and moves banner/font settings out of the toolbar', () => {
     render(<RecoilRoot><WorkspaceControls /></RecoilRoot>);
     const simple = screen.getByLabelText('심플 모드');
     expect(simple).toBeChecked(); fireEvent.click(simple); expect(simple).not.toBeChecked();
-    fireEvent.change(screen.getByLabelText('배너 높이'), { target: { value: '180' } });
-    expect(screen.getByLabelText('배너 높이')).toHaveValue('180');
-    fireEvent.click(screen.getByLabelText('배너 표시')); expect(screen.getByLabelText('배너 표시')).not.toBeChecked();
+    expect(screen.queryByLabelText('배너 높이')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name:'폰트 설정'})).not.toBeInTheDocument();
   });
   it('shows several D-days with calendar-day differences', () => {
     const now = new Date(); const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);

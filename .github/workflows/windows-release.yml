@@ -23,13 +23,19 @@ jobs:
       - run: npm install --global yarn@1.22.22
       - run: yarn install --frozen-lockfile
       - run: yarn test:run
+      - name: 배포용 로그인 설정 확인
+        if: github.event_name == 'release'
+        run: node scripts/check-distribution-auth.cjs
       - run: yarn prebuild
       - run: yarn electron-builder --win nsis portable --x64 --publish never
       - name: 실행 파일 보관
         uses: actions/upload-artifact@v7
         with:
           name: TOMO-CALENDAR-Windows-x64
-          path: release/TOMO*.exe
+          path: |
+            release/TOMO*.exe
+            release/*.blockmap
+            release/latest.yml
           compression-level: 0
           if-no-files-found: error
       - name: 게시된 릴리즈에 실행 파일 추가
@@ -39,5 +45,5 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         shell: pwsh
         run: |
-          $tomoAssets = Get-ChildItem -LiteralPath release -Filter 'TOMO*.exe' | ForEach-Object { $_.FullName }
+          $tomoAssets = Get-ChildItem -LiteralPath release | Where-Object { $_.Name -like 'TOMO*.exe' -or $_.Name -like '*.blockmap' -or $_.Name -eq 'latest.yml' } | ForEach-Object { $_.FullName }
           gh release upload $env:RELEASE_TAG @tomoAssets

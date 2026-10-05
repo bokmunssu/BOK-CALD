@@ -1,7 +1,8 @@
 import { useRecoilState, useRecoilValue } from 'recoil';
 import { currentThemeState, customThemesState, predefinedThemes } from '@store/atoms';
 import { Theme } from '@types';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { resolveFont } from '../utils/localFonts';
 import { workspaceSettingsState } from '../store/workspace';
 
 export const useTheme = () => {
@@ -9,10 +10,9 @@ export const useTheme = () => {
   const [currentTheme, setCurrentTheme] = useRecoilState(currentThemeState);
   const [customThemes, setCustomThemes] = useRecoilState(customThemesState);
 
-  const applyTheme = (theme: Theme) => {
+  const applyTheme = useCallback((theme: Theme) => {
     const root = document.documentElement;
-    const font = workspace.fontFamily ? JSON.stringify(workspace.fontFamily) + ', system-ui, sans-serif' : 'system-ui, "Malgun Gothic", sans-serif';
-    root.style.setProperty('--app-font-family', font);
+
     const colors = theme.colors;
 
     root.style.setProperty('--color-primary', colors.primary);
@@ -32,11 +32,17 @@ export const useTheme = () => {
 
     document.body.style.backgroundColor = colors.background;
     document.body.style.color = colors.text;
-  };
+  }, []);
 
   useEffect(() => {
     applyTheme(currentTheme);
-  }, [currentTheme, workspace.simple, workspace.fontFamily]);
+  }, [currentTheme, applyTheme]);
+
+  useEffect(() => {
+    let current = true;
+    void resolveFont(workspace.fontFamily).then(font => { if (current) document.documentElement.style.setProperty('--app-font-family', font); });
+    return () => { current = false; };
+  }, [workspace.fontFamily]);
 
   const selectTheme = (themeId: string) => {
     const allThemes = [...predefinedThemes, ...customThemes];
@@ -48,6 +54,7 @@ export const useTheme = () => {
 
   const createCustomTheme = (theme: Theme) => {
     setCustomThemes(prev => [...prev, theme]);
+    setCurrentTheme(theme);
   };
 
   const updateCustomTheme = (themeId: string, updates: Partial<Theme>) => {
@@ -56,6 +63,7 @@ export const useTheme = () => {
         theme.id === themeId ? { ...theme, ...updates } : theme
       )
     );
+    if (currentTheme.id === themeId) setCurrentTheme(theme => ({ ...theme, ...updates }));
   };
 
   const deleteCustomTheme = (themeId: string) => {
@@ -66,19 +74,19 @@ export const useTheme = () => {
   };
 
   // 실시간 미리보기를 위한 임시 테마 적용 함수
-  const previewTheme = (colors: Theme['colors']) => {
+  const previewTheme = useCallback((colors: Theme['colors']) => {
     const tempTheme: Theme = {
       id: 'preview',
       name: 'Preview',
       colors
     };
     applyTheme(tempTheme);
-  };
+  }, [applyTheme]);
 
   // 미리보기 종료 시 원래 테마로 복원
-  const resetPreview = () => {
+  const resetPreview = useCallback(() => {
     applyTheme(currentTheme);
-  };
+  }, [applyTheme, currentTheme]);
 
   return {
     currentTheme,

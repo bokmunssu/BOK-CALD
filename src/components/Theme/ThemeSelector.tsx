@@ -4,6 +4,7 @@ import { Theme } from "@types";
 import { v4 as uuidv4 } from "uuid";
 import { HexColorPicker } from "react-colorful";
 import { MdEdit, MdDelete } from "react-icons/md";
+import { recommendPalettes } from '../../utils/palette';
 import styles from "./ThemeSelector.module.scss";
 
 const ThemeSelector: React.FC = () => {
@@ -70,7 +71,7 @@ const ThemeSelector: React.FC = () => {
         colors: customColors,
       };
       createCustomTheme(newTheme);
-      selectTheme(newTheme.id);
+
     }
 
     setShowCustomForm(false);
@@ -224,6 +225,7 @@ const ThemeSelector: React.FC = () => {
             </span>
           </div>
 
+          <div className={styles.paletteSuggestions}><label>기준 색<input aria-label="테마 추천 기준 색" type="color" value={/^#[0-9a-f]{6}$/i.test(customColors.primary) ? customColors.primary : '#6688bb'} onChange={e => setCustomColors(c => ({ ...c, primary: e.target.value }))} /></label><span>어울리는 팔레트</span>{recommendPalettes(customColors.primary).map(p => <button key={p.name} type="button" onClick={() => setCustomColors(p.colors)}>{[p.colors.primary, p.colors.accent, p.colors.background, p.colors.text].map((c,i) => <i key={i} style={{ background: c }} />)}{p.name}</button>)}</div>
           <div className={styles.colorInputs}>
             {Object.entries(customColors).map(([key, value]) => (
               <div key={key} className={styles.colorInput}>

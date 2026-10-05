@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import type { TodoItem } from '../../types';
 import { readImage } from '../../utils/memo';
 import { openWidget } from './WorkspaceControls';
+import ImageHeader from '../Common/ImageHeader';
 import MicrosoftPanel from './MicrosoftPanel';
 import styles from './Widgets.module.scss';
 
@@ -24,7 +25,7 @@ export default function TodoList({ date }: { date?: Date }) {
     .sort((a,b) => Number(a.completed) - Number(b.completed) || Number(b.important) - Number(a.important)), [todos,day,allDates,search,filter]);
   const update = (id: string, patch: Partial<TodoItem>) => setTodos(items => items.map(item => item.id === id ? { ...item, ...patch, updatedAt: new Date() } : item));
   return <div className={styles.todoList}>
-    {appearance.image && <div className={styles.todoBanner}><img src={appearance.image} alt="할 일 배너" /><button className={styles.iconButton} aria-label="할 일 이미지 삭제" onClick={() => setAppearance({ image: '' })}><FiTrash2 /></button></div>}
+    {appearance.image && <ImageHeader image={appearance.image} placement={appearance} label="할 일" onChange={p => setAppearance(a => ({ ...a, ...p }))} onRemove={() => setAppearance(a => ({ ...a, image: '' }))} />}
     <div className={styles.sectionHeading}><strong>할 일</strong><small>{visible.filter(t => t.completed).length}/{visible.length} 완료</small><span className={styles.spacer} />
       <button className={styles.iconButton} title="Microsoft To Do 연동" aria-label="Microsoft To Do 연동" onClick={() => setSyncOpen(true)}><span className={styles.microsoftMark}>✓</span></button>
       <button className={styles.iconButton} title="배너 이미지 추가" aria-label="할 일 이미지 추가" onClick={() => upload.current?.click()}><FiImage /></button>
@@ -50,7 +51,7 @@ export default function TodoList({ date }: { date?: Date }) {
         {todo.microsoft && <span className={styles.syncBadge} title="Microsoft To Do 연결 항목">To Do</span>}
       </div>
     </article>)}</div>
-    <input ref={upload} type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif" onChange={async e => { const file = e.target.files?.[0]; if (!file) return; try { setAppearance({ image: await readImage(file) }); } catch (err) { toast.error(String(err)); } e.target.value = ''; }} />
+    <input ref={upload} type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif" onChange={async e => { const file = e.target.files?.[0]; if (!file) return; try { setAppearance({ image: await readImage(file), positionX: 50, positionY: 50, zoom: 1 }); } catch (err) { toast.error(String(err)); } e.target.value = ''; }} />
     {syncOpen && <MicrosoftPanel onClose={() => setSyncOpen(false)} />}
   </div>;
 }

@@ -14,11 +14,24 @@ export function mergeItems<T extends { id: string }>(current: T[], previous: T[]
   const before = new Map(previous.map(item => [item.id, item]));
   const after = new Map(next.map(item => [item.id, item]));
   const deleted = new Set(previous.filter(item => !after.has(item.id)).map(item => item.id));
-  const changed = next.filter(item => JSON.stringify(before.get(item.id)) !== JSON.stringify(item));
+  const changed = next.filter(item => !recordsEqual(before.get(item.id), item));
   const changes = new Map(changed.map(item => [item.id, item]));
   const result = current.filter(item => !deleted.has(item.id)).map(item => changes.get(item.id) ?? item);
   const existing = new Set(result.map(item => item.id));
   return [...result, ...changed.filter(item => !existing.has(item.id))];
+}
+
+function recordsEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  const first = a as Record<string, unknown>; const second = b as Record<string, unknown>;
+  const keys = Object.keys(first);
+  return keys.length === Object.keys(second).length && keys.every(key => {
+    const x = first[key]; const y = second[key];
+    if (x === y) return true;
+    if (x instanceof Date && y instanceof Date) return +x === +y;
+    return typeof x === 'object' && typeof y === 'object' && JSON.stringify(x) === JSON.stringify(y);
+  });
 }
 
 export interface ForegroundWindow { processName: string; title: string }

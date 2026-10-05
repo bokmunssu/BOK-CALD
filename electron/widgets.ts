@@ -78,7 +78,7 @@ export function registerWidgets(store: Store, openCalendar: () => void) {
       savedBounds.x >= d.workArea.x && savedBounds.y >= d.workArea.y &&
       savedBounds.x + width <= d.workArea.x + d.workArea.width && savedBounds.y + 60 <= d.workArea.y + d.workArea.height);
     const win = new BrowserWindow({ width, height, ...(visible ? { x: savedBounds.x, y: savedBounds.y } : {}),
-      minWidth: 300, minHeight: 220, title: `TOMO CALENDAR · ${kind}`, frame: false, autoHideMenuBar: true,
+      minWidth: 260, minHeight: 200, title: `TOMO CALENDAR · ${kind}`, frame: false, autoHideMenuBar: true,
       alwaysOnTop: store.get(`widgets.${id}.pinned`) === true,
       backgroundColor: '#fafafa',
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true,

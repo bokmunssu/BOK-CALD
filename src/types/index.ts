@@ -115,6 +115,9 @@ export interface TodoItem {
 }
 
 export interface MemoEntry {
+  positionX?: number;
+  positionY?: number;
+  zoom?: number;
   title?: string;
   id: string;
   date: Date;

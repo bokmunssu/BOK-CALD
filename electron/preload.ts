@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  updater: { check: () => ipcRenderer.invoke('update-check'), status: () => ipcRenderer.invoke('update-status'), install: () => ipcRenderer.invoke('update-install'),
+    subscribe: (callback: (value: unknown) => void) => { const listener = (_: unknown, value: unknown) => callback(value); ipcRenderer.on('update-changed', listener); return () => ipcRenderer.removeListener('update-changed', listener); } },
+
   system: { fonts: () => ipcRenderer.invoke('system-fonts'), windows: () => ipcRenderer.invoke('system-windows') },
   microsoftTodo: {
     status: () => ipcRenderer.invoke('microsoft-status'),

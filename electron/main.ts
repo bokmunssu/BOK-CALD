@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, Notification, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, shell, session } from "electron";
 import path from "path";
 import os from "os";
 import Store from "electron-store";
+import { registerUpdater } from './updater';
 import { registerGoogleAccount } from './googleAccount';
 import { registerMicrosoftTodo } from './microsoftTodo';
 import { registerSystemPreferences } from './systemPreferences';
@@ -119,6 +120,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  const trustedPage = (url: string) => url.startsWith('file:') || url.startsWith('http://localhost:5173/');
+  session.defaultSession.setPermissionCheckHandler((contents, permission) => String(permission) === 'local-fonts' && !!contents && trustedPage(contents.getURL()));
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(String(permission) === 'local-fonts' && trustedPage(contents.getURL())));
+  registerUpdater();
   registerGoogleAccount();
   registerSystemPreferences();
   registerMicrosoftTodo(store, broadcastStore);

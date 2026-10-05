@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRecoilValue } from 'recoil';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { Toaster } from 'react-hot-toast';
@@ -26,12 +26,19 @@ export function DDayCard({ id }: { id: string }) {
 }
 export default function WidgetApp() {
   useTheme();
+  const container = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setScale(Math.max(.7, Math.min(1.25, entry.contentRect.width / 360, entry.contentRect.height / 380))));
+    if (container.current) observer.observe(container.current);
+    return () => observer.disconnect();
+  }, []);
   const params = new URLSearchParams(location.search); const kind = params.get('widget'); const id = params.get('itemId') || params.get('memoId') || '';
   const notes = useRecoilValue(memosState); const days = useRecoilValue(dDaysState);
   const labels: Record<string, string> = { todo: '할 일', memo: '메모', dday: 'D-DAY', pomodoro: '뽀모도로', worktime: '작업시간' };
   const label = kind === 'memo' ? notes.find(n => n.id === id)?.title || '메모' : kind === 'dday' ? days.find(d => d.id === id)?.title || 'D-DAY' : labels[kind ?? ''] || '위젯';
   useEffect(() => { document.title = `TOMO CALENDAR · ${label}`; }, [label]);
-  return <div className={styles.widget}>
+  return <div ref={container} className={styles.widget} style={{ "--widget-scale": scale } as React.CSSProperties}>
     <Toaster toastOptions={{ style: { background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 } }} />
     <header className={styles.toolbar}><span className={styles.brandMark}>T</span><strong>{label}</strong><span className={styles.spacer} /><FontSettings /><PinButton />
       <button className={styles.iconButton} aria-label="캘린더" title="캘린더 열기" onClick={() => window.electronAPI.openCalendar().catch(() => toast.error('캘린더를 열지 못했습니다.'))}><FiCalendar /></button>

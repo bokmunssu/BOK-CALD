@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ElectronAPI {
+  updater: { check: () => Promise<import('../electron/updater').UpdateStatus>; status: () => Promise<import('../electron/updater').UpdateStatus>; install: () => Promise<void>; subscribe: (callback: (value: import('../electron/updater').UpdateStatus) => void) => () => void };
+
   googleAccount: {
     info: () => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
     configure: (value: { clientId: string; clientSecret: string }) => Promise<{ configured: boolean; clientId: string; personal: boolean }>;

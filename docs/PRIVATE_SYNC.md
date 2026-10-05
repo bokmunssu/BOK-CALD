@@ -1,5 +1,7 @@
 # 개인용 계정 연동
 
+> **2.2.0 배포 빌드:** 공통 등록 정보가 포함되어 일반 사용자는 아래 앱 등록 절차 없이 계정으로 로그인합니다. 아래는 별도 개인 등록을 쓰는 고급 사용자의 절차와 이전 실패 원인입니다. 공유 전 운영자 준비는 [배포 인증 안내](DISTRIBUTION_AUTH.md)를 확인하세요.
+
 TOMO CALENDAR는 설치 파일을 직접 실행하는 데스크톱 앱입니다. Microsoft Store 배포나 별도의 유료 서버가 필요하지 않습니다. 캘린더·메모·할 일·타이머는 계정 연결 없이 로컬에서 동작합니다. 저장소 공개 여부와 Microsoft 앱 등록은 별개이며, 이번 작업에서 GitHub 저장소의 공개 범위는 변경하지 않았습니다.
 
 ## 구글 로그인 실패 원인과 해결
@@ -31,10 +33,10 @@ Calendar API의 표준 사용에는 추가 비용이 없습니다. Testing 상�
 
 기존 테넌트에서 앱 등록이 가능한 경우 [Microsoft To Do 안내](MICROSOFT_TODO.md)를 따라 ID를 만든 뒤 **할 일 → Microsoft To Do 연동 → 개인 연결 설정(선택)**에 ID만 저장하면 됩니다. 클라이언트 비밀키는 필요하지 않습니다. 이후 로그인·목록 선택으로 동기화합니다. 등록 ID가 빌드에 이미 포함된 경우 개인 설정 없이 로그인합니다.
 
-본인 계정에서 앱 등록이 불가능하고 추가 Azure 가입도 원하지 않는다면 공식 자동 동기화를 활성화할 수 없습니다. 비용과 등록이 없는 대안은 TOMO의 로컬 할 일을 사용하거나 연동 화면의 **Microsoft To Do 웹 열기**로 공식 웹 앱을 따로 사용하는 것입니다. 웹 열기는 자동 동기화가 아닙니다.
+공통 등록 정보가 없는 자체 빌드에서 본인 앱 등록도 불가능한 경우 로컬 할 일을 쓰거나 **Microsoft To Do 웹 열기**로 공식 웹 앱을 따로 사용할 수 있습니다. 공통 정보가 포함된 배포본의 일반 사용자는 직접 앱을 등록할 필요가 없습니다. 웹 열기는 자동 동기화가 아닙니다.
 
 [앱 등록 안내](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) · [신규 테넌트 조건](https://learn.microsoft.com/en-us/entra/fundamentals/create-new-tenant) · [Graph 유료 API 목록](https://learn.microsoft.com/en-us/graph/metered-api-list)
 
 ## 확인 범위
 
-로그인 수신기·PKCE·state·취소·오류 처리와 Graph 동기화는 모의 서버로 검증했습니다. 실제 본인 OAuth 등록 정보가 제공되지 않아 Google/Microsoft 실계정 로그인 성공은 아직 검증하지 않았습니다. 등록 후 실제 연결 결과를 확인해야 합니다.
+로그인 수신기·PKCE·state·취소·오류 처리와 Graph 동기화는 모의 서버로 검증했습니다. 2.2.0 로컬 EXE에는 유지보수자 등록 정보가 포함되지만 새 빌드의 실계정 로그인·동기화 성공은 별도 확인이 필요합니다.
