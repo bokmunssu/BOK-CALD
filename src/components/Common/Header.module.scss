@@ -422,3 +422,5 @@
 .todayButton {color:var(--color-text);padding:5px 8px;white-space:nowrap;}
 .viewButton {padding:5px 9px;}
 @media (max-width:850px) {.header {padding:0 8px;gap:6px;} .currentMonth {min-width:130px;} .rightSection {gap:5px;} .leftSection {gap:6px;}}
+
+.header {z-index:30;}

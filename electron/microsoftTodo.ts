@@ -16,6 +16,7 @@ type SyncData = { accountId?: string; email?: string; listId?: string; listName?
 export class MicrosoftTodoService {
   private tokens: Tokens | null = null;
   private authStore = new Store({ name: 'microsoft-auth' });
+  private clientId = (this.authStore.get('clientId') as string) || CLIENT_ID;
   private server: Server | null = null;
   private cancelLogin: (() => void) | null = null;
   private flight: Promise<MicrosoftStatus> | null = null;
@@ -32,7 +33,7 @@ export class MicrosoftTodoService {
     } catch { this.authStore.delete('tokens'); }
   }
   status(): MicrosoftStatus {
-    return { configured: /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(CLIENT_ID), connected: !!this.tokens,
+    return { configured: /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(this.clientId), connected: !!this.tokens,
       email: this.data.email, accountId: this.data.accountId, listId: this.data.listId, listName: this.data.listName,
       lastSync: this.data.lastSync, autoSync: this.data.autoSync !== false, syncing: !!this.flight, error: this.lastError || undefined };
   }
@@ -42,8 +43,12 @@ export class MicrosoftTodoService {
     if (!safeStorage.isEncryptionAvailable()) throw new Error('이 기기에서 계정 정보를 안전하게 저장할 수 없습니다.');
     this.authStore.set('tokens', safeStorage.encryptString(JSON.stringify(tokens)).toString('base64')); this.tokens = tokens;
   }
+  configure(clientId: string) {
+    if (typeof clientId !== 'string' || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(clientId.trim())) throw new Error('Microsoft 애플리케이션 ID를 확인해 주세요.');
+    this.disconnect(); this.clientId = clientId.trim(); this.authStore.set('clientId', this.clientId); this.emit(); return this.status();
+  }
   async login() {
-    if (!this.status().configured) throw new Error('이 테스트 빌드는 Microsoft 앱 등록을 준비 중입니다. 배포자가 등록을 완료하면 로그인할 수 있습니다.');
+    if (!this.status().configured) throw new Error('Microsoft 연결 정보가 없습니다. 개인용 앱 등록 ID를 저장하면 로그인할 수 있습니다. Microsoft Store 배포는 필요하지 않습니다.');
     if (this.server) throw new Error('Microsoft 로그인 창에서 먼저 로그인을 마쳐 주세요.');
     const verifier = randomBytes(48).toString('base64url'); const state = randomBytes(32).toString('base64url');
     const challenge = createHash('sha256').update(verifier).digest('base64url');
@@ -69,7 +74,7 @@ export class MicrosoftTodoService {
       });
       // Attach the rejection handler before opening the browser.
       const authUrl = new URL(`${AUTH}/authorize`);
-      authUrl.search = new URLSearchParams({ client_id: CLIENT_ID, response_type: 'code', redirect_uri: redirect, scope: SCOPES,
+      authUrl.search = new URLSearchParams({ client_id: this.clientId, response_type: 'code', redirect_uri: redirect, scope: SCOPES,
         state, code_challenge: challenge, code_challenge_method: 'S256', prompt: 'select_account' }).toString();
       void shell.openExternal(authUrl.toString()).catch(() => this.cancelLogin?.());
       const code = await codePromise;
@@ -94,7 +99,7 @@ export class MicrosoftTodoService {
     this.emit(); return this.status();
   }
   private async tokenRequest(params: Record<string, string>): Promise<Tokens> {
-    const response = await fetch(`${AUTH}/token`, { method: 'POST', body: new URLSearchParams({ client_id: CLIENT_ID, scope: SCOPES, ...params }), signal: AbortSignal.timeout(20000) });
+    const response = await fetch(`${AUTH}/token`, { method: 'POST', body: new URLSearchParams({ client_id: this.clientId, scope: SCOPES, ...params }), signal: AbortSignal.timeout(20000) });
     const data = await response.json();
     if (!response.ok) throw new Error('Microsoft 인증이 만료됐거나 앱 등록 설정이 올바르지 않습니다. 다시 로그인해 주세요.');
     return { access_token: data.access_token, refresh_token: data.refresh_token || this.tokens?.refresh_token, expires_at: Date.now() + data.expires_in * 1000 };
@@ -240,6 +245,7 @@ export function registerMicrosoftTodo(store: Store, notify: (key: string, value:
   const service = new MicrosoftTodoService(store, notify);
   ipcMain.handle('microsoft-status', () => service.status());
   ipcMain.handle('microsoft-login', () => service.login());
+  ipcMain.handle('microsoft-configure', (_, id: string) => service.configure(id));
   ipcMain.handle('microsoft-cancel', () => service.cancel());
   ipcMain.handle('microsoft-disconnect', () => service.disconnect());
   ipcMain.handle('microsoft-lists', () => service.lists());

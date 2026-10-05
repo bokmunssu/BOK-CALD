@@ -207,6 +207,8 @@ export interface BannerImage {
   id: string;
   image: string; // base64 이미지 데이터
   order: number; // 순서 (0-4)
+  positionX?: number;
+  positionY?: number;
 }
 
 // Carousel 설정 타입 정의

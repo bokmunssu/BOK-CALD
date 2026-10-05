@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { googleCalendarSyncState, eventsState } from "@store/atoms";
 import { useGoogleCalendarSync } from "@hooks/useGoogleCalendarSync";
@@ -39,6 +40,11 @@ export const GoogleCalendarSyncPanel: React.FC<
 
   // 연동 관련 상태
   const [isConnecting, setIsConnecting] = useState(false);
+  const [accountInfo, setAccountInfo] = useState({ configured: false, clientId: '', personal: false });
+  const [connectError, setConnectError] = useState('');
+  const [clientId, setClientId] = useState(''); const [clientSecret, setClientSecret] = useState('');
+  useEffect(() => { window.electronAPI.googleAccount.info().then(value => { setAccountInfo(value); setClientId(value.clientId); }).catch(e => setConnectError(String(e))); return () => { window.electronAPI.googleAccount.cancel().catch(() => {}); }; }, []);
+
 
   // 캘린더 선택 관련 상태
   const [showCalendarSelection, setShowCalendarSelection] = useState(false);
@@ -66,32 +72,9 @@ export const GoogleCalendarSyncPanel: React.FC<
 
   // 구글 캘린더 연동
   const handleConnect = async () => {
-    setIsConnecting(true);
+    setIsConnecting(true); setConnectError('');
     try {
-      if (
-        !window.electronAPI?.googleOAuth ||
-        !window.electronAPI?.openExternal
-      ) {
-        toast.error("Electron API를 사용할 수 없습니다");
-        return;
-      }
-
-      // 1. OAuth 서버 시작
-      const serverPromise = window.electronAPI.googleOAuth.start();
-
-      // 2. 브라우저 열기
-      const authUrl = googleCalendarService.getAuthUrl();
-      await window.electronAPI.openExternal(authUrl);
-
-      // 3. OAuth 서버에서 code 받기 대기
-      const result = await serverPromise;
-
-      if (!result.success || !result.code) {
-        throw new Error(result.error || "인증 실패");
-      }
-
-      // 4. code를 토큰으로 교환
-      const auth = await googleCalendarService.getTokenFromCode(result.code);
+      const auth = await window.electronAPI.googleAccount.login();
       const userEmail = await googleCalendarService.getUserEmail(
         auth.access_token
       );
@@ -106,7 +89,8 @@ export const GoogleCalendarSyncPanel: React.FC<
       toast.success(`구글 캘린더 연동 완료: ${userEmail}`);
     } catch (error) {
       console.error("Google Calendar connection failed:", error);
-      toast.error("구글 캘린더 연동 실패. 다시 시도해주세요.");
+      setConnectError(error instanceof Error ? error.message : String(error));
+      toast.error(error instanceof Error ? error.message : "구글 캘린더 연동 실패");
     } finally {
       setIsConnecting(false);
     }
@@ -288,8 +272,8 @@ export const GoogleCalendarSyncPanel: React.FC<
     }
   };
 
-  return (
-    <div className={styles.modal}>
+  return createPortal(
+    <div className={styles.modal} role="dialog" aria-modal="true" aria-label="구글 캘린더 연동">
       <div className={styles.overlay} onClick={onClose} />
       <div className={styles.content}>
         <div className={styles.header}>
@@ -297,7 +281,7 @@ export const GoogleCalendarSyncPanel: React.FC<
             <FcGoogle size={32} />
             구글 캘린더
           </h2>
-          <button className={styles.closeButton} onClick={onClose}>
+          <button className={styles.closeButton} aria-label="구글 연동 닫기" onClick={onClose}>
             ×
           </button>
         </div>
@@ -307,12 +291,22 @@ export const GoogleCalendarSyncPanel: React.FC<
           {!syncState.isConnected ? (
             <div className={styles.connectSection}>
               <p className={styles.description}>
-                구글 캘린더와 연동하여 이벤트를 동기화하세요.
+                구글 캘린더와 연동하여 일정을 동기화하세요.
               </p>
+              {!accountInfo.configured && <p role="status">Google OAuth 정보가 없습니다. 개인 연결 설정에서 본인 소유 데스크톱 앱 정보를 저장하세요.</p>}
+              <details className={styles.personalSettings}><summary>개인 연결 설정</summary><p>Google Cloud에서 Calendar API를 켜고 테스트 사용자에 본인 계정을 추가한 뒤 데스크톱 OAuth 클라이언트를 만드세요. 앱 공개 배포나 서버는 필요하지 않습니다.</p>
+                <label>클라이언트 ID<input aria-label="Google 클라이언트 ID" value={clientId} onChange={e => setClientId(e.target.value)} /></label>
+                <label>클라이언트 비밀번호<input aria-label="Google 데스크톱 클라이언트 비밀번호" type="password" autoComplete="off" value={clientSecret} onChange={e => setClientSecret(e.target.value)} /></label>
+                <button disabled={isConnecting || !clientId || !clientSecret} onClick={async () => { try { setAccountInfo(await window.electronAPI.googleAccount.configure({ clientId, clientSecret })); setClientSecret(''); setConnectError(''); toast.success('개인 연결 정보를 저장했습니다.'); } catch (e) { setConnectError(e instanceof Error ? e.message : String(e)); } }}>연결 설정 저장</button>
+                <small>이 컴퓨터에 암호화해 저장합니다. Google 계정 비밀번호를 입력하는 칸이 아닙니다.</small>
+              </details>
+              {connectError && <p role="alert">{connectError}</p>}
+              {isConnecting && <button onClick={() => window.electronAPI.googleAccount.cancel()}>로그인 취소</button>}
+
               <button
                 className={styles.connectButton}
                 onClick={handleConnect}
-                disabled={isConnecting}
+                disabled={isConnecting || !accountInfo.configured}
               >
                 {isConnecting ? (
                   <>
@@ -544,6 +538,6 @@ export const GoogleCalendarSyncPanel: React.FC<
           )}
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 };

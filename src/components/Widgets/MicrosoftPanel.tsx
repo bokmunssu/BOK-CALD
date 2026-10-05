@@ -6,6 +6,7 @@ import styles from './Widgets.module.scss';
 
 export default function MicrosoftPanel({ onClose }: { onClose: () => void }) {
   const api = window.electronAPI?.microsoftTodo;
+  const [clientId, setClientId] = useState('');
   const [state, setState] = useState<MicrosoftStatus>({ configured: false, connected: false, syncing: false, autoSync: true });
   const [lists, setLists] = useState<MicrosoftList[]>([]); const [selected, setSelected] = useState(''); const [busy, setBusy] = useState(false); const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -24,7 +25,9 @@ export default function MicrosoftPanel({ onClose }: { onClose: () => void }) {
     {!state.connected ? <div className={styles.connectionIntro}><div className={styles.connectionIcon}>✓</div><strong>기기 밖에서도 이어지는 할 일</strong><p>로그인하고 목록을 선택하면 제목·기한·중요·완료 상태가 양방향으로 동기화됩니다.</p>
       <button className={styles.primaryButton} disabled={!ready || busy || !state.configured} onClick={() => run(async () => { const value = await api.login(); setState(value); setLists(await api.lists()); setSelected(value.listId || ''); })}>{busy ? '브라우저에서 로그인 중…' : 'Microsoft 계정으로 로그인'}</button>
       {busy && <button onClick={() => api.cancel()}>로그인 취소</button>}
-      {ready && !state.configured && <p className={styles.message}>이 테스트 빌드의 Microsoft 로그인은 배포자 앱 등록을 준비 중입니다. 일반 사용자는 별도의 API 설정을 하지 않습니다.</p>}
+      {ready && !state.configured && <p className={styles.message}>Microsoft 연결 정보가 없습니다. Microsoft Store 공개 배포는 필요하지 않습니다. 개인용 앱 등록 ID가 있다면 아래에 한 번 저장하세요.</p>}
+      {!state.configured && <details><summary>개인 연결 설정 (선택)</summary><p className={styles.message}>본인 소유 Entra 앱의 공개 식별자입니다. 비밀키나 Microsoft 계정 비밀번호는 입력하지 않습니다.</p><input aria-label="Microsoft 개인 앱 ID" placeholder="애플리케이션(클라이언트) ID" value={clientId} onChange={e => setClientId(e.target.value)} /><button disabled={busy || !clientId} onClick={() => run(async () => { setState(await api.configure(clientId)); setClientId(''); })}>연결 설정 저장</button></details>}
+      <button onClick={() => window.electronAPI.openExternal('https://to-do.office.com/tasks/')}>Microsoft To Do 웹 열기</button>
     </div> : <>
       <div className={styles.accountCard}><FiCheck /><div><strong>연결됨</strong><small>{state.email}</small></div><span className={styles.spacer} /><button className={styles.iconButton} title="로그아웃" aria-label="Microsoft 연결 해제" disabled={busy || state.syncing} onClick={() => run(async () => { setState(await api.disconnect()); setLists([]); })}><FiLogOut /></button></div>
       <label className={styles.fieldLabel}>동기화할 목록<select aria-label="Microsoft To Do 목록" value={selected} disabled={busy || state.syncing} onChange={e => setSelected(e.target.value)}><option value="">목록 선택</option>{lists.map(list => <option key={list.id} value={list.id}>{list.displayName}</option>)}</select></label>

@@ -1,7 +1,15 @@
 /// <reference types="vite/client" />
 
 interface ElectronAPI {
+  googleAccount: {
+    info: () => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
+    configure: (value: { clientId: string; clientSecret: string }) => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
+    login: () => Promise<import('./types').GoogleCalendarAuth>; cancel: () => Promise<void>;
+    auth: () => Promise<import('./types').GoogleCalendarAuth | null>; refresh: () => Promise<import('./types').GoogleCalendarAuth>; disconnect: () => Promise<void>;
+  };
+  system: { fonts: () => Promise<string[]>; windows: () => Promise<import('./utils/workspace').WindowChoice[]> };
   microsoftTodo: {
+    configure: (id: string) => Promise<import('./types/microsoft').MicrosoftStatus>;
     status: () => Promise<import('./types/microsoft').MicrosoftStatus>;
     login: () => Promise<import('./types/microsoft').MicrosoftStatus>;
     cancel: () => Promise<void>;
@@ -55,10 +63,6 @@ interface ElectronAPI {
     icon?: string;
     silent?: boolean;
   }) => Promise<boolean>;
-  googleOAuth: {
-    start: () => Promise<{ success: boolean; code?: string; error?: string }>;
-    stop: () => Promise<void>;
-  };
   openExternal: (url: string) => Promise<void>;
   getAppVersion: () => Promise<string>;
 }

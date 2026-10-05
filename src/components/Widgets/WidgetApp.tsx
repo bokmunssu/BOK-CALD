@@ -11,6 +11,7 @@ import { MemoEditor } from './Notes';
 import Pomodoro from './Pomodoro';
 import WorkTime from './WorkTime';
 import PinButton from './PinButton';
+import FontSettings from './FontSettings';
 import styles from './Widgets.module.scss';
 
 export function DDayCard({ id }: { id: string }) {
@@ -32,7 +33,7 @@ export default function WidgetApp() {
   useEffect(() => { document.title = `TOMO CALENDAR · ${label}`; }, [label]);
   return <div className={styles.widget}>
     <Toaster toastOptions={{ style: { background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 } }} />
-    <header className={styles.toolbar}><span className={styles.brandMark}>T</span><strong>{label}</strong><span className={styles.spacer} /><PinButton />
+    <header className={styles.toolbar}><span className={styles.brandMark}>T</span><strong>{label}</strong><span className={styles.spacer} /><FontSettings /><PinButton />
       <button className={styles.iconButton} aria-label="캘린더" title="캘린더 열기" onClick={() => window.electronAPI.openCalendar().catch(() => toast.error('캘린더를 열지 못했습니다.'))}><FiCalendar /></button>
       <button className={styles.iconButton} aria-label="최소화" title="최소화" onClick={() => window.electronAPI.minimizeWindow()}><FiMinus /></button>
       <button className={`${styles.iconButton} ${styles.closeButton}`} aria-label="위젯 닫기" title="닫기" onClick={() => window.electronAPI.closeWindow()}><FiX /></button>

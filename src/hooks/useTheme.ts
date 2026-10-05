@@ -11,6 +11,8 @@ export const useTheme = () => {
 
   const applyTheme = (theme: Theme) => {
     const root = document.documentElement;
+    const font = workspace.fontFamily ? JSON.stringify(workspace.fontFamily) + ', system-ui, sans-serif' : 'system-ui, "Malgun Gothic", sans-serif';
+    root.style.setProperty('--app-font-family', font);
     const colors = theme.colors;
 
     root.style.setProperty('--color-primary', colors.primary);
@@ -34,7 +36,7 @@ export const useTheme = () => {
 
   useEffect(() => {
     applyTheme(currentTheme);
-  }, [currentTheme, workspace.simple]);
+  }, [currentTheme, workspace.simple, workspace.fontFamily]);
 
   const selectTheme = (themeId: string) => {
     const allThemes = [...predefinedThemes, ...customThemes];

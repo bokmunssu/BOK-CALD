@@ -1,8 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  system: { fonts: () => ipcRenderer.invoke('system-fonts'), windows: () => ipcRenderer.invoke('system-windows') },
   microsoftTodo: {
     status: () => ipcRenderer.invoke('microsoft-status'),
+    configure: (id: string) => ipcRenderer.invoke('microsoft-configure', id),
     login: () => ipcRenderer.invoke('microsoft-login'),
     cancel: () => ipcRenderer.invoke('microsoft-cancel'),
     disconnect: () => ipcRenderer.invoke('microsoft-disconnect'),
@@ -80,10 +82,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     silent?: boolean;
   }) => ipcRenderer.invoke("show-notification", options),
 
-  // Google OAuth API
-  googleOAuth: {
-    start: () => ipcRenderer.invoke("google-oauth-start"),
-    stop: () => ipcRenderer.invoke("google-oauth-stop"),
+  googleAccount: {
+    info: () => ipcRenderer.invoke('google-account-info'), configure: (value: unknown) => ipcRenderer.invoke('google-account-configure', value),
+    login: () => ipcRenderer.invoke('google-account-login'), cancel: () => ipcRenderer.invoke('google-account-cancel'), auth: () => ipcRenderer.invoke('google-account-auth'),
+    refresh: () => ipcRenderer.invoke('google-account-refresh'), disconnect: () => ipcRenderer.invoke('google-account-disconnect'),
   },
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 

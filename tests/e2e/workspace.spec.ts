@@ -170,7 +170,7 @@ test('circular timer and login settings use compact controls', async ({}, info) 
   await todo.screenshot({ path: info.outputPath('todo-widget.png') });
   await todo.getByRole('button', { name: 'Microsoft To Do 연동' }).click();
   await expect(todo.getByRole('heading', { name: 'Microsoft To Do' })).toBeVisible();
-  await expect(todo.getByRole('dialog').locator('input')).toHaveCount(0);
+  await expect(todo.getByLabel('Microsoft 개인 앱 ID')).not.toBeVisible();
 });
 test('work time records only its selected active window and stops on pause', async ({}, info) => {
   test.skip(process.platform !== 'win32');
@@ -194,4 +194,82 @@ test('work time records only its selected active window and stops on pause', asy
   expect((await work.evaluate(() => window.electronAPI.workTime.get())).targets[0].days).toEqual(before.targets[0].days);
   await work.evaluate(() => window.electronAPI.workTime.command('pause'));
   await work.screenshot({ path: info.outputPath('work-time-widget.png') });
+});
+
+test('installed font selection applies to the calendar and open widgets', async () => {
+  test.skip(process.platform !== 'win32');
+  const todo = await openWidget('todo');
+  await calendar.getByRole('button', { name: '폰트 설정', exact: true }).click();
+  await calendar.getByLabel('폰트 검색').fill('Arial');
+  await calendar.getByRole('button', { name: /Arial 가나다 Aa 123/, exact: false }).first().click();
+  await expect.poll(() => todo.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Arial');
+  await calendar.getByRole('button', { name: '폰트 설정 닫기' }).click();
+  await calendar.reload();
+  await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Arial');
+});
+test('Google modal covers the compact toolbar and explains missing configuration', async ({}, info) => {
+  await calendar.getByRole('button', { name: '설정', exact: true }).click();
+  await calendar.getByRole('button', { name: '구글 캘린더', exact: true }).click();
+  const dialog = calendar.getByRole('dialog', { name: '구글 캘린더 연동' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/Google OAuth 정보가 없습니다/)).toBeVisible();
+  await expect(dialog.getByRole('button', {name:'구글 계정으로 연동하기'})).toBeDisabled();
+  const onTop = await calendar.evaluate(() => {
+    const dialog = document.querySelector('[role="dialog"]')!;
+    const box = document.querySelector('[class*="workspaceBar"]')!.getBoundingClientRect();
+    return dialog.contains(document.elementFromPoint(box.x + 20, box.y + 10));
+  });
+  expect(onTop).toBe(true);
+  await dialog.getByText('개인 연결 설정', {exact:true}).click();
+  await expect(dialog.getByLabel('Google 클라이언트 ID')).toBeVisible();
+  await calendar.screenshot({path:info.outputPath('google-settings.png')});
+  await dialog.getByRole('button', {name:'구글 연동 닫기'}).click();
+});
+test('banner positioning preserves the original image and persists independently', async ({}, info) => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#B6D7FF"/><circle cx="400" cy="100" r="80" fill="#ffb6c1"/></svg>';
+  const image = 'data:image/svg+xml;base64,'+Buffer.from(svg).toString('base64');
+  await calendar.evaluate(async image => {
+    await window.electronAPI.store.set('bannerImages',[{id:'position-test',image,order:0}]);
+    await window.electronAPI.store.set('workspaceSettings',{simple:false,bannerVisible:true,bannerHeight:140,koreanHolidays:true,fontFamily:''});
+  }, image);
+  await calendar.reload();
+  const banner = calendar.locator('[class*="bannerContainer_"]').first();
+  await expect(calendar.locator('[class*="banner_"]')).toHaveCSS('background-image', /data:image/);
+  await banner.hover();
+  await calendar.getByRole('button',{name:'배너 표시 위치 조정'}).click();
+  await calendar.getByLabel('배너 세로 위치').fill('15');
+  await calendar.getByRole('button',{name:'위치 저장'}).click();
+  await expect.poll(() => calendar.evaluate(async () => (await window.electronAPI.store.get('bannerImages'))[0].positionY)).toBe(15);
+  expect(await calendar.evaluate(async () => (await window.electronAPI.store.get('bannerImages'))[0].image)).toBe(image);
+  await calendar.screenshot({path:info.outputPath('banner-position.png')});
+});
+test('window picker chooses an external window for both timers without a countdown', async ({}, info) => {
+  test.skip(process.platform !== 'win32');
+  const targetData = info.outputPath('external-target-data'); fs.mkdirSync(targetData,{recursive:true});
+  const external = await electron.launch({args:['.'],env:{...process.env,NODE_ENV:'production',TOMO_TEST_USER_DATA:targetData}});
+  try {
+    const targetPage = await external.firstWindow();
+    await expect(targetPage.getByLabel('심플 모드')).toBeVisible();
+    await external.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setTitle('TOMO picker target'));
+    const timer = await openWidget('pomodoro');
+    await timer.getByLabel('뽀모도로 설정').click();
+    await timer.getByRole('button',{name:'기록할 창 선택'}).click();
+    await timer.getByLabel('실행 중인 창 검색').fill('TOMO picker target');
+    await expect(timer.getByRole('button',{name:/TOMO picker target/})).toBeVisible();
+    await timer.screenshot({path:info.outputPath('window-picker.png')});
+    await timer.getByRole('button',{name:/TOMO picker target/}).click();
+    const snapshot = await timer.evaluate(()=>window.electronAPI.timer.get());
+    expect(snapshot.target?.title).toBe('TOMO picker target'); expect(snapshot.target?.mode).toBe('title');
+    const work = await openWidget('worktime');
+    await work.getByRole('button',{name:'프로그램 추가'}).click();
+    await work.getByLabel('실행 중인 창 검색').fill('TOMO picker target');
+    await work.getByRole('button',{name:/TOMO picker target/}).click();
+    await work.getByLabel('작업 대상 이름').fill('선택한 창');
+    await work.getByRole('button',{name:'추가',exact:true}).click();
+    const workState = await work.evaluate(()=>window.electronAPI.workTime.get());
+    expect(workState.targets[0].target.title).toBe(snapshot.target?.title);
+    expect(workState.targets[0].target.processName).toBe(snapshot.target?.processName);
+    expect(workState.targets[0].target.mode).toBe('title');
+    await work.screenshot({path:info.outputPath('window-picker-work.png')});
+  } finally { await external.close(); }
 });

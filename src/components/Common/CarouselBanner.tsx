@@ -7,7 +7,7 @@ import {
   BannerImage,
 } from "@store/atoms";
 import { MdPhoto, MdClose, MdCrop } from "react-icons/md";
-import BannerCropModal from "./BannerCropModal";
+import BannerPositionEditor from "./BannerPositionEditor";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { v4 as uuidv4 } from "uuid";
@@ -22,7 +22,6 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
   const [bannerImages, setBannerImages] = useRecoilState(bannerImagesState);
   const [carouselSettings] = useRecoilState(carouselSettingsState);
   const setStickerEditMode = useSetRecoilState(stickerEditModeState);
-  const [isHovered, setIsHovered] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
   const [tempImage, setTempImage] = useState<string | null>(null);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
@@ -41,9 +40,9 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        setTempImage(result);
-        setEditingImageId(null); // 새 이미지 추가
-        setShowCropModal(true);
+        const id = uuidv4();
+        setBannerImages(prev => [...prev, { id, image: result, order: prev.length, positionX: 50, positionY: 50 }]);
+        setTempImage(result); setEditingImageId(id); setShowCropModal(true);
         setStickerEditMode(false);
       };
       reader.readAsDataURL(file);
@@ -71,26 +70,9 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
     }
   };
 
-  const handleCropComplete = (croppedImage: string) => {
-    if (editingImageId) {
-      // 기존 이미지 수정
-      setBannerImages((prev) =>
-        prev.map((img) =>
-          img.id === editingImageId ? { ...img, image: croppedImage } : img
-        )
-      );
-    } else {
-      // 새 이미지 추가
-      const newImage: BannerImage = {
-        id: uuidv4(),
-        image: croppedImage,
-        order: bannerImages.length,
-      };
-      setBannerImages((prev) => [...prev, newImage]);
-    }
-    setShowCropModal(false);
-    setTempImage(null);
-    setEditingImageId(null);
+  const handlePositionComplete = (position: { x: number; y: number }) => {
+    setBannerImages(prev => prev.map(img => img.id === editingImageId ? { ...img, positionX: position.x, positionY: position.y } : img));
+    setShowCropModal(false); setTempImage(null); setEditingImageId(null);
   };
 
   const handleCropCancel = () => {
@@ -122,8 +104,6 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
     <div
       className={styles.bannerContainer}
       style={{ height }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
     >
       {bannerImages.length > 0 ? (
@@ -150,15 +130,15 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
               <SwiperSlide key={banner.id}>
                 <div
                   className={styles.banner}
-                  style={{ backgroundImage: `url(${banner.image})` }}
+                  style={{ backgroundImage: `url(${banner.image})`, backgroundPosition: `${banner.positionX ?? 50}% ${banner.positionY ?? 50}%` }}
                 >
                   <div className={styles.overlay}></div>
-                  {isHovered && (
+                  {(
                     <div className={styles.slideControls}>
                       <button
                         className={styles.cropButton}
                         onClick={(e) => handleCropImage(e, banner.id)}
-                        title="이미지 자르기"
+                        title="표시 위치 조정" aria-label="배너 표시 위치 조정"
                       >
                         <MdCrop />
                       </button>
@@ -175,7 +155,7 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
               </SwiperSlide>
             ))}
           </Swiper>
-          {isHovered && bannerImages.length < MAX_BANNERS && (
+          {bannerImages.length < MAX_BANNERS && (
             <div className={styles.globalControls}>
               <button
                 className={styles.addButton}
@@ -205,9 +185,12 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
         style={{ display: "none" }}
       />
       {showCropModal && tempImage && (
-        <BannerCropModal
-          imageSrc={tempImage}
-          onCropComplete={handleCropComplete}
+        <BannerPositionEditor
+          image={tempImage}
+          x={bannerImages.find(b => b.id === editingImageId)?.positionX}
+          y={bannerImages.find(b => b.id === editingImageId)?.positionY}
+          ratio={(fileInputRef.current?.parentElement?.clientWidth || 600) / height}
+          onSave={handlePositionComplete}
           onClose={handleCropCancel}
         />
       )}
