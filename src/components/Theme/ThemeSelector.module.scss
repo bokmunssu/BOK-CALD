@@ -346,3 +346,4 @@
     cursor: not-allowed;
   }
 }
+.paletteSuggestions {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;label{display:flex;align-items:center;gap:6px;}input{width:32px;height:28px;border:0;padding:0;}button{display:flex;align-items:center;gap:4px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text);padding:7px;cursor:pointer;}i{display:block;width:13px;height:13px;border-radius:50%;}}

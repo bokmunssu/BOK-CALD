@@ -40,6 +40,7 @@ $radius: 10px;
   &::after {content:'';position:absolute;bottom:0;right:0;width:19px;height:19px;background:linear-gradient(135deg,transparent 49%,#00000013 50%);pointer-events:none;}
   .stickyOpen {display:flex;flex-direction:column;align-items:stretch;text-align:left;width:100%;padding:12px 12px 29px;white-space:normal;border:0;background:transparent;border-radius:0;min-height:105px;gap:6px;}
   .stickyOpen:hover {background:#ffffff12;}
+  .stickyImage {display:block;height:65px;overflow:hidden;border-radius:5px;}
   img {width:100%;height:65px;object-fit:cover;border-radius:5px;}
   strong {font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   p {font-size:11px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;opacity:.8;min-height:16px;line-height:1.6;}
@@ -118,3 +119,12 @@ $radius: 10px;
 .windowIcon {width:16px;height:16px;}
 
 .bannerPositionPreview {width:100%;background-size:cover;cursor:grab;touch-action:none;border-radius:8px;min-height:60px;}
+
+.widget > .content { zoom: var(--widget-scale, 1); }
+.imageHeader {position:relative;height:110px;flex-shrink:0;overflow:hidden;border-radius:8px;background:var(--color-background);img {display:block;width:100%;height:100%;object-fit:cover;}}
+.imageActions {position:absolute;top:6px;right:6px;display:flex;gap:3px;button {background:var(--color-surface)!important;}}
+.memoEditor > .imageHeader {height:125px;border-radius:0;}
+.fontPanel {width:100%;}
+.fontList > button {content-visibility:auto;contain-intrinsic-size:auto 35px;}
+.todoCard {content-visibility:auto;contain-intrinsic-size:auto 76px;}
+.widget .timerDial {width:min(100%,270px);}

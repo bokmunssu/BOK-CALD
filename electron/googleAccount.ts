@@ -59,7 +59,7 @@ export class GoogleAccount {
   cancel() { if (this.server) { ++this.generation; this.cancelPending?.(); this.server.close(); } }
   disconnect() { this.cancel(); ++this.generation; this.store.delete('tokens'); }
   async login() {
-    if (!this.info().configured) throw new Error('이 빌드에는 Google OAuth 정보가 없습니다. 개인 연결 설정에서 본인 소유 데스크톱 앱 정보를 등록해 주세요.');
+    if (!this.info().configured) throw new Error('이 빌드의 Google 연결 설정이 누락되었습니다. 배포자에게 문의해 주세요.');
     if (this.server) throw new Error('진행 중인 로그인을 먼저 마쳐 주세요.');
     const config = this.config(); const generation = ++this.generation;
     const state = randomBytes(32).toString('base64url'); const verifier = randomBytes(48).toString('base64url');
@@ -83,7 +83,7 @@ export class GoogleAccount {
       });
       const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       url.search = new URLSearchParams({ client_id: config.clientId, redirect_uri: redirect, response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email openid',
+        scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email openid',
         access_type: 'offline', prompt: 'consent', state, code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256' }).toString();
       void shell.openExternal(url.toString()).catch(() => this.cancelPending?.());
       const code = await codePromise;

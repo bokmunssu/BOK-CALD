@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ElectronAPI {
+  updater: { check: () => Promise<import('../electron/updater').UpdateStatus>; status: () => Promise<import('../electron/updater').UpdateStatus>; install: () => Promise<void>; subscribe: (callback: (value: import('../electron/updater').UpdateStatus) => void) => () => void };
+
   googleAccount: {
     info: () => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
     configure: (value: { clientId: string; clientSecret: string }) => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
@@ -30,7 +32,10 @@ interface ElectronAPI {
   openCalendar: () => Promise<void>;
   getPinned: () => Promise<boolean>;
   setPinned: (value: boolean) => Promise<boolean>;
-  mergeItems: (key: string, previous: unknown[], next: unknown[]) => Promise<void>;
+    mergeItems: (key: string, previous: unknown[], next: unknown[]) => Promise<void>;
+    patchItems: (key: string, patch: import('./utils/workspace').CollectionPatch) => Promise<void>;
+    onStorePatched: (callback: (key: string, patch: import('./utils/workspace').CollectionPatch) => void) => () => void;
+    onFlushEdits: (callback: () => Promise<void>) => () => void;
   onStoreChanged: (callback: (key: string, value: any) => void) => () => void;
   timer: {
     get: () => Promise<TimerSnapshot>;

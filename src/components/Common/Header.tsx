@@ -60,6 +60,7 @@ const Header: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [appVersion, setAppVersion] = useState<string>("");
   const [hasUpdate, setHasUpdate] = useState<boolean>(false);
+  const [updateLabel, setUpdateLabel] = useState('');
 
   // 앱 버전 로드 및 업데이트 확인
   useEffect(() => {
@@ -69,13 +70,9 @@ const Header: React.FC = () => {
         setAppVersion(version);
 
         // 업데이트 확인 (백그라운드에서)
-        checkForUpdates()
-          .then((updateInfo) => {
-            setHasUpdate(updateInfo.hasUpdate);
-          })
-          .catch((error) => {
-            console.error("Update check failed:", error);
-          });
+        if (!window.electronAPI?.updater || (await window.electronAPI.updater.status()).status === 'unsupported') {
+          void checkForUpdates().then(info => setHasUpdate(info.hasUpdate)).catch(() => {});
+        }
       } catch (error) {
         console.error("Failed to load version:", error);
       }
@@ -83,6 +80,12 @@ const Header: React.FC = () => {
 
     loadVersion();
   }, []);
+
+  useEffect(() => window.electronAPI?.updater?.subscribe(update => {
+    setHasUpdate(update.status === 'downloading' || update.status === 'ready');
+    setUpdateLabel(update.status === 'ready' ? '업데이트 설치' : update.status === 'downloading' ? `${update.percent ?? 0}%` : '');
+    if (update.status === 'ready') toast.success('새 버전 다운로드 완료. 상단 버전을 눌러 재시작·설치하세요.', { duration: 6000 });
+  }), []);
 
   // 메뉴 외부 클릭 시 닫기
   useEffect(() => {
@@ -177,6 +180,17 @@ const Header: React.FC = () => {
     toast.loading("버전 확인 중...");
 
     try {
+      if (window.electronAPI?.updater) {
+        const update = await window.electronAPI.updater.check();
+        toast.dismiss();
+        if (update.status === 'ready') {
+          if (confirm(`v${update.version} 다운로드가 완료됐습니다. 모든 TOMO 창을 닫고 업데이트 후 다시 시작할까요?`)) await window.electronAPI.updater.install();
+          return;
+        }
+        if (update.status === 'downloading') { toast.success(`v${update.version} 다운로드 중 · ${update.percent ?? 0}%`); return; }
+        if (update.status === 'current') { toast.success('최신 버전을 사용 중입니다.'); return; }
+        if (update.status === 'error') { toast.error(update.message || '업데이트 확인 실패'); return; }
+      }
       const updateInfo = await checkForUpdates();
 
       toast.dismiss();
@@ -307,6 +321,7 @@ const Header: React.FC = () => {
             }
           >
             <span className={styles.versionText}>v{appVersion}</span>
+            {updateLabel && <span className={styles.versionText}>{updateLabel}</span>}
             {hasUpdate && <span className={styles.updateDot}>●</span>}
           </div>
         )}

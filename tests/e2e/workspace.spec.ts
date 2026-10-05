@@ -1,6 +1,8 @@
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
+import { randomBytes } from 'node:crypto';
 
 let app: ElectronApplication;
 let calendar: Page;
@@ -29,9 +31,10 @@ test('small calendar retains all dates with maximum banner height', async ({}, i
   const days = calendar.locator('[class*="calendarDay_"]');
   await expect(days).toHaveCount(42);
   await calendar.getByLabel('심플 모드').uncheck();
-  await calendar.getByText('배너 설정', { exact: true }).click();
+  await calendar.getByTitle('스타일링 매니저').click();
+  await calendar.getByRole('button', { name: '배너', exact: true }).click();
   await calendar.getByLabel('배너 높이', { exact: true }).fill('240');
-  await calendar.getByText('배너 설정', { exact: true }).click();
+  await calendar.locator('[class*="overlay_"]').filter({ has: calendar.getByText('스타일 관리', {exact:true}) }).locator('[class*="closeButton_"]').click();
   const lastDay = calendar.locator('[class*="calendarDay_"]').last();
   await lastDay.scrollIntoViewIfNeeded();
   const box = await lastDay.boundingBox();
@@ -43,8 +46,10 @@ test('small calendar retains all dates with maximum banner height', async ({}, i
   expect(firstBox!.y).toBeGreaterThanOrEqual(0);
   await lastDay.scrollIntoViewIfNeeded();
   await calendar.screenshot({ path: info.outputPath('compact-calendar.png') });
-  await calendar.getByText('배너 설정', { exact: true }).click();
+  await calendar.getByTitle('스타일링 매니저').click();
+  await calendar.getByRole('button', { name: '배너', exact: true }).click();
   await calendar.getByLabel('배너 표시', { exact: true }).uncheck();
+  await calendar.locator('[class*="overlay_"]').filter({ has: calendar.getByText('스타일 관리', {exact:true}) }).locator('[class*="closeButton_"]').click();
   await expect(calendar.locator('[class*="bannerContainer_"]')).toHaveCount(0);
 });
 
@@ -106,9 +111,9 @@ test('calendar view and sidebar survive closing and reopening while a widget rem
 test('focus gate counts only the selected active window title', async () => {
   test.skip(process.platform !== 'win32', 'Windows foreground detection');
   const timer = await openWidget('pomodoro');
-  await app.evaluate(({ BrowserWindow }) => {
+  await app.evaluate(async ({ BrowserWindow }) => {
     const win = new BrowserWindow({ title: 'TOMO focus test target', width: 320, height: 240 });
-    win.loadURL('about:blank'); win.show(); win.focus();
+    await win.loadURL('about:blank'); win.setAlwaysOnTop(true); win.show(); win.focus();
   });
   const capture = timer.evaluate(() => window.electronAPI.timer.capture());
   await app.evaluate(({ BrowserWindow }) => {
@@ -199,31 +204,88 @@ test('work time records only its selected active window and stops on pause', asy
 test('installed font selection applies to the calendar and open widgets', async () => {
   test.skip(process.platform !== 'win32');
   const todo = await openWidget('todo');
-  await calendar.getByRole('button', { name: '폰트 설정', exact: true }).click();
+  await calendar.getByTitle('스타일링 매니저').click();
+  await calendar.getByRole('button', { name: 'Aa 폰트', exact: true }).click();
   await calendar.getByLabel('폰트 검색').fill('Arial');
-  await calendar.getByRole('button', { name: /Arial 가나다 Aa 123/, exact: false }).first().click();
-  await expect.poll(() => todo.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Arial');
-  await calendar.getByRole('button', { name: '폰트 설정 닫기' }).click();
+  await calendar.getByRole('button', { name: 'Arial', exact: true }).click();
+  await expect.poll(() => todo.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('TomoInstalled');
+  await calendar.locator('[class*="overlay_"]').filter({ has: calendar.getByText('스타일 관리', {exact:true}) }).locator('[class*="closeButton_"]').click();
   await calendar.reload();
-  await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Arial');
+  await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('TomoInstalled');
 });
 test('Google modal covers the compact toolbar and explains missing configuration', async ({}, info) => {
   await calendar.getByRole('button', { name: '설정', exact: true }).click();
   await calendar.getByRole('button', { name: '구글 캘린더', exact: true }).click();
   const dialog = calendar.getByRole('dialog', { name: '구글 캘린더 연동' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(/Google OAuth 정보가 없습니다/)).toBeVisible();
-  await expect(dialog.getByRole('button', {name:'구글 계정으로 연동하기'})).toBeDisabled();
+  const configured = await calendar.evaluate(async () => (await window.electronAPI.googleAccount.info()).configured);
+  if (configured) await expect(dialog.getByRole('button', {name:'구글 계정으로 연동하기'})).toBeEnabled();
+  else await expect(dialog.getByRole('button', {name:'구글 계정으로 연동하기'})).toBeDisabled();
   const onTop = await calendar.evaluate(() => {
     const dialog = document.querySelector('[role="dialog"]')!;
     const box = document.querySelector('[class*="workspaceBar"]')!.getBoundingClientRect();
     return dialog.contains(document.elementFromPoint(box.x + 20, box.y + 10));
   });
   expect(onTop).toBe(true);
-  await dialog.getByText('개인 연결 설정', {exact:true}).click();
-  await expect(dialog.getByLabel('Google 클라이언트 ID')).toBeVisible();
+  await expect(dialog.getByText('고급 연결 설정', {exact:true})).toHaveCount(0);
+  await expect(dialog.getByLabel('Google 클라이언트 ID')).toHaveCount(0);
   await calendar.screenshot({path:info.outputPath('google-settings.png')});
   await dialog.getByRole('button', {name:'구글 연동 닫기'}).click();
+});
+
+test('a fresh external profile has common login configuration and no advanced fields', async () => {
+  const config = await calendar.evaluate(async () => ({ google: await window.electronAPI.googleAccount.info(), microsoft: await window.electronAPI.microsoftTodo.status() }));
+  expect(config.google.personal).toBe(false);
+  expect(config.google.configured).toBe(true);
+  expect(config.microsoft.configured).toBe(true);
+  const todo = await openWidget('todo'); await todo.getByLabel('Microsoft To Do 연동').click();
+  await expect(todo.getByRole('button',{name:'Microsoft 계정으로 로그인'})).toBeEnabled();
+  await expect(todo.getByText('고급 연결 설정')).toHaveCount(0);
+  await expect(todo.getByLabel('Microsoft 개인 앱 ID')).toHaveCount(0);
+});
+
+test('multiple calendar D-days can be shown, hidden and restored independently', async () => {
+  await calendar.evaluate(async () => {
+    const now = new Date();
+    await window.electronAPI.store.set('dDays', ['first', 'second'].map(id => ({ id, title:id, targetDate:now, createdAt:now, isActive:false })));
+    await window.electronAPI.store.set('activeDDay', { id:'first', title:'first', targetDate:now, createdAt:now });
+  });
+  await calendar.reload();
+  await calendar.getByLabel('D-DAY 관리').click();
+  await calendar.getByLabel('second 캘린더 표시').click();
+  await expect(calendar.getByLabel('first 캘린더 표시')).toHaveAttribute('aria-pressed', 'true');
+  await expect(calendar.getByLabel('second 캘린더 표시')).toHaveAttribute('aria-pressed', 'true');
+  await calendar.locator('[class*="modalHeader_"] [class*="closeButton_"]').click();
+  const strip = calendar.locator('[class*="ddayWidget_"]');
+  await expect(strip.getByText('first',{exact:true})).toBeVisible(); await expect(strip.getByText('second',{exact:true})).toBeVisible();
+  await calendar.getByLabel('D-DAY 관리').click(); await calendar.getByLabel('first 캘린더 표시').click(); await calendar.locator('[class*="modalHeader_"] [class*="closeButton_"]').click();
+  await calendar.reload(); await expect(strip.getByText('first',{exact:true})).toHaveCount(0); await expect(strip.getByText('second',{exact:true})).toBeVisible();
+});
+
+test('image-heavy typing batches small patches and closing flushes the latest memo and font size', async ({}, info) => {
+  const png = await sharp(randomBytes(1024*1024*3), { raw: { width:1024, height:1024, channels:3 } }).png().toBuffer();
+  const image = 'data:image/png;base64,' + png.toString('base64');
+  await calendar.evaluate(async image => { const now=new Date(); await window.electronAPI.store.set('memos',Array.from({length:25},(_,i)=>({id:`heavy-${i}`,title:`메모 ${i}`,image,content:'',date:now,createdAt:now,updatedAt:now}))); },image);
+  const stats = await calendar.evaluate(async () => { const notes = await window.electronAPI.store.get('memos'); return { bytes:JSON.stringify(notes).length, image:notes[0].image }; });
+  expect(stats.bytes).toBeLessThan(15000); expect(stats.image).toMatch(/^tomo-image:/);
+  const memo = await openWidget('memo','heavy-0');
+  await expect.poll(() => memo.getByAltText('메모 이미지').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1024);
+  await memo.getByLabel('메모 글자 크기').selectOption('24');
+  await calendar.evaluate(() => { (window as any).patchStats=[]; window.electronAPI.onStorePatched((key,patch)=>{ if(key==='memos') (window as any).patchStats.push(JSON.stringify(patch).length); }); });
+  const editor=memo.getByLabel('메모 내용'); await editor.click();
+  const text='빠르게 입력해도 마지막 글자가 저장됩니다. '.repeat(8);
+  await editor.pressSequentially(text,{delay:1});
+  await expect(editor).toContainText(text.trim());
+  const closed = memo.waitForEvent('close');
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('memoId=heavy-0'))!.close()); await closed;
+  const reopened=await openWidget('memo','heavy-0');
+  await expect(reopened.getByLabel('메모 내용')).toContainText(text.trim());
+  await expect(reopened.getByLabel('메모 글자 크기')).toHaveValue('24');
+  await expect(reopened.getByLabel('메모 내용')).toHaveCSS('font-size','24px');
+  const patches = await calendar.evaluate(()=>(window as any).patchStats);
+  expect(patches.length).toBeGreaterThan(0); expect(patches.length).toBeLessThan(10); expect(patches.every((size:number)=>size<10000)).toBe(true);
+  await info.attach('typing-patch-sizes',{body:JSON.stringify({ compactStoreBytes:stats.bytes, patchSizes:patches }),contentType:'application/json'});
+  fs.writeFileSync(info.outputPath('typing-performance.json'), JSON.stringify({ originalImageBytes:png.length, originalInlineBytes:25*image.length, compactStoreBytes:stats.bytes, patchSizes:patches },null,2));
 });
 test('banner positioning preserves the original image and persists independently', async ({}, info) => {
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#B6D7FF"/><circle cx="400" cy="100" r="80" fill="#ffb6c1"/></svg>';
@@ -234,14 +296,82 @@ test('banner positioning preserves the original image and persists independently
   }, image);
   await calendar.reload();
   const banner = calendar.locator('[class*="bannerContainer_"]').first();
-  await expect(calendar.locator('[class*="banner_"]')).toHaveCSS('background-image', /data:image/);
+  await expect(banner.getByAltText('캘린더 배너')).toHaveAttribute('src', /data:image/);
   await banner.hover();
   await calendar.getByRole('button',{name:'배너 표시 위치 조정'}).click();
   await calendar.getByLabel('배너 세로 위치').fill('15');
+  await calendar.getByLabel('배너 확대/축소').fill('1.8');
   await calendar.getByRole('button',{name:'위치 저장'}).click();
   await expect.poll(() => calendar.evaluate(async () => (await window.electronAPI.store.get('bannerImages'))[0].positionY)).toBe(15);
   expect(await calendar.evaluate(async () => (await window.electronAPI.store.get('bannerImages'))[0].image)).toBe(image);
+  expect(await calendar.evaluate(async () => (await window.electronAPI.store.get('bannerImages'))[0].zoom)).toBe(1.8);
   await calendar.screenshot({path:info.outputPath('banner-position.png')});
+});
+
+test('note and todo image placement survives resizing and reopening', async ({}, info) => {
+  const image = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#b6d7ff"/><circle cx="200" cy="100" r="80" fill="#ffb6c1"/></svg>').toString('base64');
+  const now = new Date().toISOString();
+  await calendar.evaluate(async ({image,now}) => {
+    await window.electronAPI.store.set('memos',[{id:'header-note',title:'이미지 메모',content:'본문',image,date:now,createdAt:now,updatedAt:now}]);
+    await window.electronAPI.store.set('todoAppearance',{image});
+  },{image,now});
+  const memo = await openWidget('memo','header-note'); const todo = await openWidget('todo');
+  for (const [page,label] of [[memo,'메모'],[todo,'할 일']] as const) {
+    await page.getByLabel(`${label} 이미지 표시 조정`).click();
+    await page.getByLabel('배너 가로 위치').fill('25');
+    await page.getByLabel('배너 세로 위치').fill('75');
+    await page.getByLabel('배너 확대/축소').fill('2');
+    await page.getByRole('button',{name:'위치 저장'}).click();
+    await expect(page.getByAltText(`${label} 이미지`)).toHaveCSS('transform', 'matrix(2, 0, 0, 2, 0, 0)');
+    await page.reload();
+    await expect(page.getByAltText(`${label} 이미지`)).toHaveCSS('object-position', '25% 75%');
+  }
+  await app.evaluate(({BrowserWindow}) => { for (const win of BrowserWindow.getAllWindows()) if (win.webContents.getURL().includes('widget=')) win.setSize(260,240); });
+  await expect.poll(() => memo.locator('main').evaluate(el => Number(getComputedStyle(el).zoom))).toBeLessThan(1);
+  const body = memo.getByLabel('메모 내용'); await body.fill('작은 창에서도 입력');
+  await expect.poll(() => memo.evaluate(async () => (await window.electronAPI.store.get('memos'))[0].content)).toBe('작은 창에서도 입력');
+  expect(await todo.evaluate(() => getComputedStyle(document.documentElement).scrollbarWidth)).toBe('none');
+  await memo.screenshot({path:info.outputPath('compact-image-note.png')});
+});
+
+test('palette suggestions preserve the chosen color and preview without looping', async ({}, info) => {
+  const errors: string[] = []; calendar.on('pageerror', error => errors.push(error.message));
+  await calendar.getByTitle('스타일링 매니저').click();
+  await calendar.getByRole('button',{name:'테마',exact:true}).click();
+  await calendar.getByRole('button',{name:'+ 커스텀 테마 만들기'}).click();
+  await calendar.getByLabel('테마 추천 기준 색').fill('#6374aa');
+  await calendar.getByRole('button',{name:'차분한 다크'}).click();
+  await calendar.getByLabel('실시간 미리보기').check();
+  await expect.poll(() => calendar.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim())).toBe('#6374aa');
+  await calendar.getByPlaceholder('테마 이름을 입력하세요').fill('추천 테스트');
+  await calendar.getByRole('button',{name:'테마 생성',exact:true}).click();
+  await expect.poll(() => calendar.evaluate(async () => (await window.electronAPI.store.get('currentTheme')).name)).toBe('추천 테스트');
+  expect(errors).toEqual([]);
+  await calendar.screenshot({path:info.outputPath('recommended-theme.png')});
+});
+
+test('installed font families load and window inventory measures cold and cached requests', async ({}, info) => {
+  test.skip(process.platform !== 'win32');
+  const result = await calendar.evaluate(async () => {
+    const start = performance.now(); const fonts = await (window as any).queryLocalFonts();
+    const fontMs = performance.now()-start;
+    const regular = new Map<string, any>(); for (const f of fonts) if (!regular.has(f.family) || /regular|normal/i.test(f.style)) regular.set(f.family,f);
+    const failures: string[] = [];
+    for (const [family,font] of regular) {
+      try {
+        try { await new FontFace('TomoFontAudit', `local(${JSON.stringify(font.fullName)}), local(${JSON.stringify(font.postscriptName)})`).load(); }
+        catch { await new FontFace('TomoFontAudit', await (await font.blob()).arrayBuffer()).load(); }
+      }
+      catch { failures.push(family); }
+    }
+    const first = performance.now(); const windows = await window.electronAPI.system.windows(); const windowMs = performance.now()-first;
+    const repeated = performance.now(); await window.electronAPI.system.windows(); const cachedWindowMs = performance.now()-repeated;
+    return {familyCount:regular.size,fontMs,failures,windowCount:windows.length,windowMs,cachedWindowMs};
+  });
+  expect(result.familyCount).toBeGreaterThan(0);
+  fs.writeFileSync(info.outputPath('performance.json'), JSON.stringify(result,null,2));
+  await info.attach('local-fonts-and-window-performance',{body:JSON.stringify(result,null,2),contentType:'application/json'});
+  expect(result.failures).toEqual([]);
 });
 test('window picker chooses an external window for both timers without a countdown', async ({}, info) => {
   test.skip(process.platform !== 'win32');

@@ -10,7 +10,6 @@ import {
   sidebarPositionState,
   bannerImagesState,
   carouselSettingsState,
-  BannerImage,
 } from "@store/atoms";
 import {
   MdBrush,
@@ -29,6 +28,9 @@ import {
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { StickerLayout } from "./StickerPanel";
+import FontSettings from '../Widgets/FontSettings';
+import { workspaceSettingsState } from '../../store/workspace';
+import CarouselBanner from '../Common/CarouselBanner';
 import ThemeSelector from "../Theme/ThemeSelector";
 import styles from "./StylingManager.module.scss";
 
@@ -36,9 +38,10 @@ interface StylingManagerProps {
   onClose: () => void;
 }
 
-type StylingMode = "sticker" | "theme" | "sidebar" | "banner";
+type StylingMode = "sticker" | "theme" | "sidebar" | "banner" | "font";
 
 const StylingManager: React.FC<StylingManagerProps> = ({ onClose }) => {
+  const [workspace, setWorkspace] = useRecoilState(workspaceSettingsState);
   const [activeMode, setActiveMode] = useState<StylingMode>("sticker");
   const [stickerEditMode, setStickerEditMode] =
     useRecoilState(stickerEditModeState);
@@ -218,9 +221,11 @@ const StylingManager: React.FC<StylingManagerProps> = ({ onClose }) => {
             <MdPhotoLibrary />
             배너
           </button>
+          <button className={`${styles.tab} ${activeMode === "font" ? styles.active : ""}`} onClick={() => setActiveMode("font")}>Aa 폰트</button>
         </div>
 
         <div className={styles.content}>
+          {activeMode === "font" && <FontSettings embedded />}
           {activeMode === "sticker" && (
             <div className={styles.stickerContent}>
               <div className={styles.infoSection}>
@@ -403,6 +408,11 @@ const StylingManager: React.FC<StylingManagerProps> = ({ onClose }) => {
           )}
           {activeMode === "banner" && (
             <div className={styles.bannerContent}>
+              <div className={styles.carouselSettings}>
+                <label className={styles.settingLabel}><input aria-label="배너 표시" type="checkbox" checked={workspace.bannerVisible} onChange={e => setWorkspace(w => ({ ...w, bannerVisible: e.target.checked, ...(e.target.checked ? { simple: false } : {}) }))} />배너 표시</label>
+                <div className={styles.settingItem}><label>높이</label><input aria-label="배너 높이" type="range" min="40" max="240" step="10" value={workspace.bannerHeight} onChange={e => setWorkspace(w => ({ ...w, bannerHeight: Number(e.target.value), bannerVisible: true, simple: false }))} /><output>{workspace.bannerHeight}px</output></div>
+                <CarouselBanner height={workspace.bannerHeight} />
+              </div>
               <div className={styles.sectionHeader}>
                 <h3>배너 이미지 관리</h3>
                 <div className={styles.bannerCount}>

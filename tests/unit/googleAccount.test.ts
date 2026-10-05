@@ -13,13 +13,18 @@ function setup() { const a = new GoogleAccount(); a.configure({clientId:'test.ap
 beforeEach(() => { cache.clear(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 describe('Google desktop OAuth', () => {
   it('reports missing configuration before opening a browser or local listener', async () => {
-    const a = new GoogleAccount(); await expect(a.login()).rejects.toThrow('Google OAuth 정보가 없습니다');
+    const a = new GoogleAccount(); await expect(a.login()).rejects.toThrow('Google 연결 설정이 누락');
     expect(shell.openExternal).not.toHaveBeenCalled();
   });
   it('uses the system browser, state and matching PKCE verifier with a random loopback port', async () => {
     const a = setup(); let challenge = '';
     vi.mocked(shell.openExternal).mockImplementation(async address => {
       const url = new URL(address); expect(url.hostname).toBe('accounts.google.com');
+      const scopes = url.searchParams.get('scope')!.split(' ');
+      expect(scopes).toContain('https://www.googleapis.com/auth/calendar.events');
+      expect(scopes).toContain('https://www.googleapis.com/auth/calendar.calendarlist.readonly');
+      expect(scopes).toContain('https://www.googleapis.com/auth/calendar.app.created');
+      expect(scopes).not.toContain('https://www.googleapis.com/auth/calendar');
       expect(url.searchParams.get('code_challenge_method')).toBe('S256'); challenge = url.searchParams.get('code_challenge')!;
       const redirect = new URL(url.searchParams.get('redirect_uri')!); expect(redirect.hostname).toBe('127.0.0.1'); expect(Number(redirect.port)).toBeGreaterThan(0);
       redirect.search = new URLSearchParams({state:url.searchParams.get('state')!,code:'test-code'}).toString();

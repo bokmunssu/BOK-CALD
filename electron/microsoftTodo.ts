@@ -9,7 +9,7 @@ import { importTask, localTaskBody, localTaskHash, remoteTaskHash, taskSyncActio
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 const AUTH = 'https://login.microsoftonline.com/common/oauth2/v2.0';
 const SCOPES = 'openid profile offline_access User.Read Tasks.ReadWrite';
-const CLIENT_ID = process.env.TOMO_MICROSOFT_CLIENT_ID || '';
+const CLIENT_ID = process.env.TOMO_MICROSOFT_CLIENT_ID || 'd30b957f-52e4-4273-ba9f-fdc63816aa7d';
 type Tokens = { access_token: string; refresh_token: string; expires_at: number };
 type SyncData = { accountId?: string; email?: string; listId?: string; listName?: string; lastSync?: string; mappings: TaskMapping[]; mappingSets?: Record<string, TaskMapping[]>; autoSync: boolean };
 

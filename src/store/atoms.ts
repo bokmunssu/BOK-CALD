@@ -1,4 +1,4 @@
-import { atom } from 'recoil';
+import { atom, selector } from 'recoil';
 import { sharedEffect, restoreDates } from './sharedEffect';
 import { Event, Theme, DDay, GoogleCalendarSyncState, TodoItem, MemoEntry, Category } from '@types';
 import { Sticker, StickerLayout, UploadedStickerTemplate } from '@components/Styling/StickerPanel';
@@ -202,6 +202,18 @@ export const activeDDayState = atom<DDay | null>({
   effects: [sharedEffect('activeDDay', value => value ? { ...value, targetDate: new Date(value.targetDate), createdAt: new Date(value.createdAt) } : null)],
 });
 
+export const visibleDDayIdsState = atom<string[] | null>({
+  key: 'visibleDDayIds', default: null,
+  effects: [sharedEffect('visibleDDayIds', value => Array.isArray(value) ? [...new Set(value.filter((id: unknown) => typeof id === 'string'))] as string[] : null)],
+});
+export const visibleDDaysState = selector<DDay[]>({
+  key: 'visibleDDays', get: ({ get }) => {
+    const days = get(dDaysState); const saved = get(visibleDDayIdsState);
+    const ids = saved ?? [get(activeDDayState)?.id ?? days[0]?.id].filter(Boolean);
+    return days.filter(day => ids.includes(day.id));
+  },
+});
+
 // 배너 이미지 타입 정의
 export interface BannerImage {
   id: string;
@@ -209,6 +221,7 @@ export interface BannerImage {
   order: number; // 순서 (0-4)
   positionX?: number;
   positionY?: number;
+  zoom?: number;
 }
 
 // Carousel 설정 타입 정의

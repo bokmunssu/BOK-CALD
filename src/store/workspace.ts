@@ -6,6 +6,6 @@ export const workspaceSettingsState = atom<WorkspaceSettings>({
   key: 'workspaceSettings', default: normalizeSettings(),
   effects: [sharedEffect('workspaceSettings', value => normalizeSettings(value ?? {}))],
 });
-export const todoAppearanceState = atom<{ image?: string }>({
+export const todoAppearanceState = atom<{ image?: string } & import('../utils/banner').ImagePlacement>({
   key: 'todoAppearance', default: {}, effects: [sharedEffect('todoAppearance', value => value || {})],
 });

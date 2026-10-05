@@ -35,21 +35,6 @@ body {
   height: 100%;
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.2);
-  }
-}
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
 button, input, select, textarea {font-family:inherit;}

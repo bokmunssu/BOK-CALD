@@ -6,7 +6,6 @@ import styles from './Widgets.module.scss';
 
 export default function MicrosoftPanel({ onClose }: { onClose: () => void }) {
   const api = window.electronAPI?.microsoftTodo;
-  const [clientId, setClientId] = useState('');
   const [state, setState] = useState<MicrosoftStatus>({ configured: false, connected: false, syncing: false, autoSync: true });
   const [lists, setLists] = useState<MicrosoftList[]>([]); const [selected, setSelected] = useState(''); const [busy, setBusy] = useState(false); const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -21,12 +20,11 @@ export default function MicrosoftPanel({ onClose }: { onClose: () => void }) {
   const run = async (action: () => Promise<unknown>) => { setBusy(true); try { await action(); } catch (error) { toast.error(String(error)); } finally { setBusy(false); } };
   return <div className={styles.modalBackdrop} onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose(); }}><section className={styles.syncPanel} role="dialog" aria-modal="true" aria-labelledby="microsoft-title">
     <header className={styles.sectionHeading}><span className={styles.microsoftMark}>✓</span><h2 id="microsoft-title">Microsoft To Do</h2><span className={styles.spacer} /><button className={styles.iconButton} aria-label="연동 설정 닫기" onClick={onClose}><FiX /></button></header>
-    <p className={styles.message}>TOMO의 할 일을 Microsoft To Do와 함께 사용하세요.</p>
+    <p className={styles.message}>본인 Microsoft 계정으로 로그인하고 동기화할 목록을 선택하세요. 토큰은 이 컴퓨터에 암호화해 저장됩니다.</p>
     {!state.connected ? <div className={styles.connectionIntro}><div className={styles.connectionIcon}>✓</div><strong>기기 밖에서도 이어지는 할 일</strong><p>로그인하고 목록을 선택하면 제목·기한·중요·완료 상태가 양방향으로 동기화됩니다.</p>
       <button className={styles.primaryButton} disabled={!ready || busy || !state.configured} onClick={() => run(async () => { const value = await api.login(); setState(value); setLists(await api.lists()); setSelected(value.listId || ''); })}>{busy ? '브라우저에서 로그인 중…' : 'Microsoft 계정으로 로그인'}</button>
       {busy && <button onClick={() => api.cancel()}>로그인 취소</button>}
-      {ready && !state.configured && <p className={styles.message}>Microsoft 연결 정보가 없습니다. Microsoft Store 공개 배포는 필요하지 않습니다. 개인용 앱 등록 ID가 있다면 아래에 한 번 저장하세요.</p>}
-      {!state.configured && <details><summary>개인 연결 설정 (선택)</summary><p className={styles.message}>본인 소유 Entra 앱의 공개 식별자입니다. 비밀키나 Microsoft 계정 비밀번호는 입력하지 않습니다.</p><input aria-label="Microsoft 개인 앱 ID" placeholder="애플리케이션(클라이언트) ID" value={clientId} onChange={e => setClientId(e.target.value)} /><button disabled={busy || !clientId} onClick={() => run(async () => { setState(await api.configure(clientId)); setClientId(''); })}>연결 설정 저장</button></details>}
+      {ready && !state.configured && <p className={styles.message}>이 빌드의 Microsoft 연결 설정이 누락되었습니다. 배포자에게 문의해 주세요.</p>}
       <button onClick={() => window.electronAPI.openExternal('https://to-do.office.com/tasks/')}>Microsoft To Do 웹 열기</button>
     </div> : <>
       <div className={styles.accountCard}><FiCheck /><div><strong>연결됨</strong><small>{state.email}</small></div><span className={styles.spacer} /><button className={styles.iconButton} title="로그아웃" aria-label="Microsoft 연결 해제" disabled={busy || state.syncing} onClick={() => run(async () => { setState(await api.disconnect()); setLists([]); })}><FiLogOut /></button></div>

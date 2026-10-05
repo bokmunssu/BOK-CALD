@@ -7,7 +7,9 @@ import {
   BannerImage,
 } from "@store/atoms";
 import { MdPhoto, MdClose, MdCrop } from "react-icons/md";
+import { imageTransform } from '../../utils/banner';
 import BannerPositionEditor from "./BannerPositionEditor";
+import { readImage } from '../../utils/memo';
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { v4 as uuidv4 } from "uuid";
@@ -29,7 +31,7 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
 
   const MAX_BANNERS = 5;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith("image/")) {
       if (bannerImages.length >= MAX_BANNERS) {
@@ -37,15 +39,13 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
         return;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
+      try {
+        const result = await readImage(file);
         const id = uuidv4();
         setBannerImages(prev => [...prev, { id, image: result, order: prev.length, positionX: 50, positionY: 50 }]);
         setTempImage(result); setEditingImageId(id); setShowCropModal(true);
         setStickerEditMode(false);
-      };
-      reader.readAsDataURL(file);
+      } catch (error) { alert(error instanceof Error ? error.message : '이미지를 읽지 못했습니다.'); }
     }
     // Reset input value
     if (fileInputRef.current) {
@@ -70,8 +70,8 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
     }
   };
 
-  const handlePositionComplete = (position: { x: number; y: number }) => {
-    setBannerImages(prev => prev.map(img => img.id === editingImageId ? { ...img, positionX: position.x, positionY: position.y } : img));
+  const handlePositionComplete = (position: { x: number; y: number; zoom: number }) => {
+    setBannerImages(prev => prev.map(img => img.id === editingImageId ? { ...img, positionX: position.x, positionY: position.y, zoom: position.zoom } : img));
     setShowCropModal(false); setTempImage(null); setEditingImageId(null);
   };
 
@@ -130,9 +130,9 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
               <SwiperSlide key={banner.id}>
                 <div
                   className={styles.banner}
-                  style={{ backgroundImage: `url(${banner.image})`, backgroundPosition: `${banner.positionX ?? 50}% ${banner.positionY ?? 50}%` }}
+
                 >
-                  <div className={styles.overlay}></div>
+                  <img src={banner.image} alt="캘린더 배너" style={{ ...imageTransform(banner), position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /><div className={styles.overlay}></div>
                   {(
                     <div className={styles.slideControls}>
                       <button
@@ -188,6 +188,7 @@ const CarouselBanner: React.FC<{ height?: number }> = ({ height = 100 }) => {
         <BannerPositionEditor
           image={tempImage}
           x={bannerImages.find(b => b.id === editingImageId)?.positionX}
+          zoom={bannerImages.find(b => b.id === editingImageId)?.zoom}
           y={bannerImages.find(b => b.id === editingImageId)?.positionY}
           ratio={(fileInputRef.current?.parentElement?.clientWidth || 600) / height}
           onSave={handlePositionComplete}
