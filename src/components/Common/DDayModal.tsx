@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useRecoilState, useSetRecoilState } from 'recoil';
-import { dDaysState, activeDDayState, modalActiveState } from '@store/atoms';
+import { useRecoilState, useSetRecoilState, useRecoilValue } from 'recoil';
+import { dDaysState, visibleDDayIdsState, visibleDDaysState, modalActiveState } from '@store/atoms';
 import { DDay } from '@types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
@@ -15,7 +15,8 @@ interface DDayModalProps {
 
 const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
   const [ddays, setDDays] = useRecoilState(dDaysState);
-  const [activeDDay, setActiveDDay] = useRecoilState(activeDDayState);
+  const visible = useRecoilValue(visibleDDaysState);
+  const setVisible = useSetRecoilState(visibleDDayIdsState);
   const setModalActive = useSetRecoilState(modalActiveState);
   const [showForm, setShowForm] = useState(false);
   const [editingDDay, setEditingDDay] = useState<DDay | null>(null);
@@ -41,14 +42,11 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
 
     if (editingDDay) {
       setDDays(prev => prev.map(d => d.id === editingDDay.id ? newDDay : d));
-      if (activeDDay?.id === editingDDay.id) {
-        setActiveDDay(newDDay);
-      }
     } else {
       setDDays(prev => [...prev, newDDay]);
       // 첫 번째 D-Day인 경우 자동 활성화
       if (ddays.length === 0) {
-        setActiveDDay(newDDay);
+        setVisible([newDDay.id]);
       }
     }
 
@@ -74,14 +72,12 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
   const handleDelete = (id: string) => {
     if (confirm('정말 삭제하시겠습니까?')) {
       setDDays(prev => prev.filter(d => d.id !== id));
-      if (activeDDay?.id === id) {
-        setActiveDDay(null);
-      }
+      setVisible(visible.filter(day => day.id !== id).map(day => day.id));
     }
   };
 
   const handleSetActive = (dday: DDay) => {
-    setActiveDDay(dday);
+    setVisible(visible.some(day => day.id === dday.id) ? visible.filter(day => day.id !== dday.id).map(day => day.id) : [...visible.map(day => day.id), dday.id]);
   };
 
   // 모달 마운트/언마운트 시 모달 상태 관리
@@ -169,7 +165,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
               </div>
             ) : (
               ddays.map(dday => {
-                const isActive = activeDDay?.id === dday.id;
+                const isActive = visible.some(day => day.id === dday.id);
                 return (
                   <div
                     key={dday.id}
@@ -179,7 +175,7 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
                       <div className={styles.ddayHeader}>
                         <span className={styles.ddayItemTitle}>{dday.title}</span>
                         {isActive && (
-                          <span className={styles.activeBadge}>활성</span>
+                          <span className={styles.activeBadge}>캘린더 표시</span>
                         )}
                       </div>
                       <div className={styles.ddayItemDate}>
@@ -191,11 +187,13 @@ const DDayModal: React.FC<DDayModalProps> = ({ onClose }) => {
                     </div>
                     <div className={styles.ddayActions}>
                       <button className={styles.editButton} aria-label={`${dday.title} 위젯 열기`} title="이 디데이를 위젯으로 열기" onClick={() => openWidget('dday', dday.id)}><MdOpenInNew /></button>
-                      {!isActive && (
+                      {(
                         <button
                           className={styles.activateButton}
                           onClick={() => handleSetActive(dday)}
-                          title="활성화"
+                          title={isActive ? '캘린더에서 숨기기' : '캘린더에 표시'}
+                          aria-label={`${dday.title} 캘린더 표시`}
+                          aria-pressed={isActive}
                         >
                           <MdCheck />
                         </button>

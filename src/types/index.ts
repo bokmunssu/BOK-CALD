@@ -115,6 +115,7 @@ export interface TodoItem {
 }
 
 export interface MemoEntry {
+  fontSize?: number;
   positionX?: number;
   positionY?: number;
   zoom?: number;

@@ -1,4 +1,7 @@
-import { app, BrowserWindow, ipcMain, Notification, shell, session } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, shell, session, protocol, net } from "electron";
+import { pathToFileURL } from 'node:url';
+import { ImageAssets } from './imageAssets';
+import { guardEditFlush } from './editFlush';
 import path from "path";
 import os from "os";
 import Store from "electron-store";
@@ -7,7 +10,7 @@ import { registerGoogleAccount } from './googleAccount';
 import { registerMicrosoftTodo } from './microsoftTodo';
 import { registerSystemPreferences } from './systemPreferences';
 import { registerWidgets } from './widgets';
-import { mergeItems } from '../src/utils/workspace';
+import { mergeItems, applyCollectionPatch, type CollectionPatch } from '../src/utils/workspace';
 
 // Tests use a separate directory; never touch the user's real calendar data.
 app.setName('TOMO CALENDAR');
@@ -15,6 +18,12 @@ app.setPath('userData', process.env.TOMO_TEST_USER_DATA || process.env.BOK_CALD_
 app.setAppUserModelId('io.github.bokmunssu.tomo.calendar');
 // Electron Store 초기화
 const store = new Store();
+const images = new ImageAssets(path.join(app.getPath('userData'), 'images'));
+protocol.registerSchemesAsPrivileged([{ scheme: 'tomo-image', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
+// One-time migration keeps image bytes out of every later synchronous config write.
+const savedConfig = store.store;
+const compactConfig = images.externalize(savedConfig) as typeof savedConfig;
+if (images.converted) store.store = compactConfig;
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -74,6 +83,7 @@ function createWindow() {
     show: false,
   });
 
+  guardEditFlush(mainWindow);
   mainWindow.once("ready-to-show", () => {
     if (mainWindow) {
       // 저장된 창 상태 복원
@@ -120,6 +130,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('tomo-image', request => { const file = images.resolve(request.url); return file ? net.fetch(pathToFileURL(file).toString()) : new Response('Not found', { status: 404 }); });
   const trustedPage = (url: string) => url.startsWith('file:') || url.startsWith('http://localhost:5173/');
   session.defaultSession.setPermissionCheckHandler((contents, permission) => String(permission) === 'local-fonts' && !!contents && trustedPage(contents.getURL()));
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(String(permission) === 'local-fonts' && trustedPage(contents.getURL())));
@@ -152,8 +163,18 @@ ipcMain.handle("store-get", (_, key: string) => {
 });
 
 ipcMain.handle("store-set", (event, key: string, value: any) => {
+  value = images.externalize(value);
   store.set(key, value);
   broadcastStore(key, value, event.sender.id);
+});
+
+ipcMain.handle('store-patch-items', (event, key: string, value: CollectionPatch) => {
+  if (!['todos', 'memos', 'dDays'].includes(key) || !value || !Array.isArray(value.updates) || !Array.isArray(value.deleted)
+    || value.deleted.some(id => typeof id !== 'string') || value.updates.some(item => !item || typeof item.id !== 'string' || !item.fields || !Array.isArray(item.unset))) throw new Error('Invalid collection patch');
+  const patch = images.externalize(value) as CollectionPatch;
+  const merged = applyCollectionPatch((store.get(key) as { id: string }[]) || [], patch);
+  store.set(key, merged);
+  for (const win of BrowserWindow.getAllWindows()) if (win.webContents.id !== event.sender.id) win.webContents.send('store-patched', key, patch);
 });
 
 function broadcastStore(key: string, value: unknown, senderId?: number) {
@@ -164,7 +185,7 @@ function broadcastStore(key: string, value: unknown, senderId?: number) {
 ipcMain.handle('store-merge-items', (event, key: string, previous: { id: string }[], next: { id: string }[]) => {
   if (!['todos', 'memos', 'dDays'].includes(key) || !Array.isArray(previous) || !Array.isArray(next)
     || [...previous, ...next].some(item => !item || typeof item.id !== 'string')) throw new Error('Invalid collection');
-  const merged = mergeItems((store.get(key) as { id: string }[]) || [], previous, next);
+  const merged = images.externalize(mergeItems((store.get(key) as { id: string }[]) || [], previous, next));
   store.set(key, merged);
   broadcastStore(key, merged, event.sender.id);
 });

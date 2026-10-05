@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { advanceTimer, defaultTimer, matchesTarget, normalizeSettings, mergeItems } from '../workspace';
+import { advanceTimer, defaultTimer, matchesTarget, normalizeSettings, mergeItems, collectionPatch, applyCollectionPatch } from '../workspace';
 
 describe('compact workspace', () => {
+  it('sends changed fields without images and preserves simultaneous edits to another field', () => {
+    const previous = [{ id:'a', content:'old', image:'data:image/png;base64,' + 'a'.repeat(1000000), title:'before' }];
+    const patch = collectionPatch(previous, [{ ...previous[0], content:'new' }]);
+    expect(JSON.stringify(patch).length).toBeLessThan(150);
+    expect(applyCollectionPatch([{ ...previous[0], title:'edited elsewhere' }], patch)[0]).toMatchObject({ content:'new', title:'edited elsewhere', image:previous[0].image });
+    const deleted = collectionPatch(previous, []); expect(applyCollectionPatch(previous, deleted)).toEqual([]);
+  });
   it('clamps banner height and preserves explicit visibility', () => {
     expect(normalizeSettings({ bannerHeight: 900, bannerVisible: false }).bannerHeight).toBe(240);
     expect(normalizeSettings({ bannerHeight: NaN }).bannerHeight).toBe(100);

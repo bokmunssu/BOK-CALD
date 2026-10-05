@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  onFlushEdits: (callback: () => Promise<void>) => {
+    const listener = async (_: unknown, id: number) => { try { await callback(); ipcRenderer.send('edits-flushed', id, true); } catch { ipcRenderer.send('edits-flushed', id, false); } };
+    ipcRenderer.on('flush-edits', listener); return () => ipcRenderer.removeListener('flush-edits', listener);
+  },
+  patchItems: (key: string, patch: unknown) => ipcRenderer.invoke('store-patch-items', key, patch),
+  onStorePatched: (callback: (key: string, patch: unknown) => void) => { const listener = (_: unknown, key: string, patch: unknown) => callback(key, patch); ipcRenderer.on('store-patched', listener); return () => ipcRenderer.removeListener('store-patched', listener); },
   updater: { check: () => ipcRenderer.invoke('update-check'), status: () => ipcRenderer.invoke('update-status'), install: () => ipcRenderer.invoke('update-install'),
     subscribe: (callback: (value: unknown) => void) => { const listener = (_: unknown, value: unknown) => callback(value); ipcRenderer.on('update-changed', listener); return () => ipcRenderer.removeListener('update-changed', listener); } },
 

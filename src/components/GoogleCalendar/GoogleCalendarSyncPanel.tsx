@@ -42,8 +42,7 @@ export const GoogleCalendarSyncPanel: React.FC<
   const [isConnecting, setIsConnecting] = useState(false);
   const [accountInfo, setAccountInfo] = useState({ configured: false, clientId: '', personal: false });
   const [connectError, setConnectError] = useState('');
-  const [clientId, setClientId] = useState(''); const [clientSecret, setClientSecret] = useState('');
-  useEffect(() => { window.electronAPI.googleAccount.info().then(value => { setAccountInfo(value); setClientId(value.clientId); }).catch(e => setConnectError(String(e))); return () => { window.electronAPI.googleAccount.cancel().catch(() => {}); }; }, []);
+  useEffect(() => { window.electronAPI.googleAccount.info().then(setAccountInfo).catch(e => setConnectError(String(e))); return () => { window.electronAPI.googleAccount.cancel().catch(() => {}); }; }, []);
 
 
   // 캘린더 선택 관련 상태
@@ -293,13 +292,7 @@ export const GoogleCalendarSyncPanel: React.FC<
               <p className={styles.description}>
                 구글 캘린더와 연동하여 일정을 동기화하세요.
               </p>
-              {!accountInfo.configured && <p role="status">이 빌드의 Google 연결 설정이 누락되었습니다. 배포자에게 문의하거나 고급 설정을 사용하세요.</p>}
-              <details className={styles.personalSettings}><summary>고급 연결 설정</summary><p>Google Cloud에서 Calendar API를 켜고 테스트 사용자에 본인 계정을 추가한 뒤 데스크톱 OAuth 클라이언트를 만드세요. 앱 공개 배포나 서버는 필요하지 않습니다.</p>
-                <label>클라이언트 ID<input aria-label="Google 클라이언트 ID" value={clientId} onChange={e => setClientId(e.target.value)} /></label>
-                <label>클라이언트 비밀번호<input aria-label="Google 데스크톱 클라이언트 비밀번호" type="password" autoComplete="off" value={clientSecret} onChange={e => setClientSecret(e.target.value)} /></label>
-                <button disabled={isConnecting || !clientId || !clientSecret} onClick={async () => { try { setAccountInfo(await window.electronAPI.googleAccount.configure({ clientId, clientSecret })); setClientSecret(''); setConnectError(''); toast.success('개인 연결 정보를 저장했습니다.'); } catch (e) { setConnectError(e instanceof Error ? e.message : String(e)); } }}>연결 설정 저장</button>
-                <small>이 컴퓨터에 암호화해 저장합니다. Google 계정 비밀번호를 입력하는 칸이 아닙니다.</small>
-              </details>
+              {!accountInfo.configured && <p role="status">이 빌드의 Google 연결 설정이 누락되었습니다. 배포자에게 문의해 주세요.</p>}
               {connectError && <p role="alert">{connectError}</p>}
               {isConnecting && <button onClick={() => window.electronAPI.googleAccount.cancel()}>로그인 취소</button>}
 

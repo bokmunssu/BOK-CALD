@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { RecoilRoot } from 'recoil';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import './styles/index.scss';
+import { flushEdits } from './utils/editing';
+import toast from 'react-hot-toast';
+window.electronAPI?.onFlushEdits?.(async () => { try { await flushEdits(); } catch (error) { toast.error('저장하지 못해 창을 닫지 않았습니다. 저장 공간을 확인해 주세요.'); throw error; } });
 
 const App = React.lazy(() => import('./App'));
 const WidgetApp = React.lazy(() => import('./components/Widgets/WidgetApp'));

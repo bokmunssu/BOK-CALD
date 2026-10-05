@@ -6,6 +6,7 @@ import { advanceTimer, defaultTimer, matchesTarget, TimerState, WidgetKind, Focu
 import { ForegroundMonitor } from './foreground';
 import { activeTarget, recordWorkTime, type WorkTimeState, type WorkTarget } from '../src/utils/worktime';
 import { randomUUID } from 'node:crypto';
+import { guardEditFlush } from './editFlush';
 
 export function registerWidgets(store: Store, openCalendar: () => void) {
   const windows = new Map<string, BrowserWindow>();
@@ -83,6 +84,7 @@ export function registerWidgets(store: Store, openCalendar: () => void) {
       backgroundColor: '#fafafa',
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true,
         nodeIntegration: false, backgroundThrottling: false } });
+    guardEditFlush(win);
     windows.set(id, win);
     if (store.get(`widgets.${id}.pinned`) === true) win.setAlwaysOnTop(true, process.platform === 'win32' ? 'pop-up-menu' : 'floating');
     win.on('close', () => store.set(`widgets.${id}.bounds`, win.getBounds()));

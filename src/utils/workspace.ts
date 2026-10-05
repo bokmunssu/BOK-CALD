@@ -1,4 +1,33 @@
 export type WidgetKind = 'todo' | 'memo' | 'dday' | 'pomodoro' | 'worktime';
+export interface CollectionPatch { updates: { id: string; fields: Record<string, unknown>; unset: string[] }[]; deleted: string[] }
+export function collectionPatch<T extends { id: string }>(previous: T[], next: T[]): CollectionPatch {
+  const before = new Map(previous.map(item => [item.id, item]));
+  const ids = new Set(next.map(item => item.id));
+  const updates: CollectionPatch['updates'] = [];
+  for (const item of next) {
+    const old = before.get(item.id) as unknown as Record<string, unknown> | undefined;
+    const value = item as unknown as Record<string, unknown>;
+    const fields: Record<string, unknown> = {};
+    for (const key of Object.keys(value)) {
+      const x = old?.[key], y = value[key];
+      if (!old || !(x === y || (x instanceof Date && y instanceof Date && +x === +y))) fields[key] = y;
+    }
+    const unset = old ? Object.keys(old).filter(key => !(key in value)) : [];
+    if (Object.keys(fields).length || unset.length) updates.push({ id: item.id, fields, unset });
+  }
+  return { updates, deleted: previous.filter(item => !ids.has(item.id)).map(item => item.id) };
+}
+export function applyCollectionPatch<T extends { id: string }>(current: T[], patch: CollectionPatch): T[] {
+  const removed = new Set(patch.deleted);
+  const changes = new Map(patch.updates.map(item => [item.id, item]));
+  const result = current.filter(item => !removed.has(item.id)).map(item => {
+    const change = changes.get(item.id); if (!change) return item;
+    const next = { ...item, ...change.fields, id: item.id };
+    for (const key of change.unset) if (key !== 'id') delete (next as Record<string, unknown>)[key];
+    changes.delete(item.id); return next;
+  });
+  return [...result, ...[...changes.values()].filter(item => !removed.has(item.id)).map(item => ({ ...item.fields, id: item.id } as T))];
+}
 export interface WorkspaceSettings { simple: boolean; bannerVisible: boolean; bannerHeight: number; koreanHolidays: boolean; fontFamily: string }
 export const normalizeSettings = (value: Partial<WorkspaceSettings> = {}): WorkspaceSettings => ({
   simple: typeof value.simple === 'boolean' ? value.simple : true,

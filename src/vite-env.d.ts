@@ -32,7 +32,10 @@ interface ElectronAPI {
   openCalendar: () => Promise<void>;
   getPinned: () => Promise<boolean>;
   setPinned: (value: boolean) => Promise<boolean>;
-  mergeItems: (key: string, previous: unknown[], next: unknown[]) => Promise<void>;
+    mergeItems: (key: string, previous: unknown[], next: unknown[]) => Promise<void>;
+    patchItems: (key: string, patch: import('./utils/workspace').CollectionPatch) => Promise<void>;
+    onStorePatched: (callback: (key: string, patch: import('./utils/workspace').CollectionPatch) => void) => () => void;
+    onFlushEdits: (callback: () => Promise<void>) => () => void;
   onStoreChanged: (callback: (key: string, value: any) => void) => () => void;
   timer: {
     get: () => Promise<TimerSnapshot>;

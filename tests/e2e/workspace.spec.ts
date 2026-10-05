@@ -1,6 +1,8 @@
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
+import { randomBytes } from 'node:crypto';
 
 let app: ElectronApplication;
 let calendar: Page;
@@ -225,10 +227,65 @@ test('Google modal covers the compact toolbar and explains missing configuration
     return dialog.contains(document.elementFromPoint(box.x + 20, box.y + 10));
   });
   expect(onTop).toBe(true);
-  await dialog.getByText('고급 연결 설정', {exact:true}).click();
-  await expect(dialog.getByLabel('Google 클라이언트 ID')).toBeVisible();
+  await expect(dialog.getByText('고급 연결 설정', {exact:true})).toHaveCount(0);
+  await expect(dialog.getByLabel('Google 클라이언트 ID')).toHaveCount(0);
   await calendar.screenshot({path:info.outputPath('google-settings.png')});
   await dialog.getByRole('button', {name:'구글 연동 닫기'}).click();
+});
+
+test('a fresh external profile has common login configuration and no advanced fields', async () => {
+  const config = await calendar.evaluate(async () => ({ google: await window.electronAPI.googleAccount.info(), microsoft: await window.electronAPI.microsoftTodo.status() }));
+  expect(config.google.personal).toBe(false);
+  expect(config.google.configured).toBe(true);
+  expect(config.microsoft.configured).toBe(true);
+  const todo = await openWidget('todo'); await todo.getByLabel('Microsoft To Do 연동').click();
+  await expect(todo.getByRole('button',{name:'Microsoft 계정으로 로그인'})).toBeEnabled();
+  await expect(todo.getByText('고급 연결 설정')).toHaveCount(0);
+  await expect(todo.getByLabel('Microsoft 개인 앱 ID')).toHaveCount(0);
+});
+
+test('multiple calendar D-days can be shown, hidden and restored independently', async () => {
+  await calendar.evaluate(async () => {
+    const now = new Date();
+    await window.electronAPI.store.set('dDays', ['first', 'second'].map(id => ({ id, title:id, targetDate:now, createdAt:now, isActive:false })));
+    await window.electronAPI.store.set('activeDDay', { id:'first', title:'first', targetDate:now, createdAt:now });
+  });
+  await calendar.reload();
+  await calendar.getByLabel('D-DAY 관리').click();
+  await calendar.getByLabel('second 캘린더 표시').click();
+  await expect(calendar.getByLabel('first 캘린더 표시')).toHaveAttribute('aria-pressed', 'true');
+  await expect(calendar.getByLabel('second 캘린더 표시')).toHaveAttribute('aria-pressed', 'true');
+  await calendar.locator('[class*="modalHeader_"] [class*="closeButton_"]').click();
+  const strip = calendar.locator('[class*="ddayWidget_"]');
+  await expect(strip.getByText('first',{exact:true})).toBeVisible(); await expect(strip.getByText('second',{exact:true})).toBeVisible();
+  await calendar.getByLabel('D-DAY 관리').click(); await calendar.getByLabel('first 캘린더 표시').click(); await calendar.locator('[class*="modalHeader_"] [class*="closeButton_"]').click();
+  await calendar.reload(); await expect(strip.getByText('first',{exact:true})).toHaveCount(0); await expect(strip.getByText('second',{exact:true})).toBeVisible();
+});
+
+test('image-heavy typing batches small patches and closing flushes the latest memo and font size', async ({}, info) => {
+  const png = await sharp(randomBytes(1024*1024*3), { raw: { width:1024, height:1024, channels:3 } }).png().toBuffer();
+  const image = 'data:image/png;base64,' + png.toString('base64');
+  await calendar.evaluate(async image => { const now=new Date(); await window.electronAPI.store.set('memos',Array.from({length:25},(_,i)=>({id:`heavy-${i}`,title:`메모 ${i}`,image,content:'',date:now,createdAt:now,updatedAt:now}))); },image);
+  const stats = await calendar.evaluate(async () => { const notes = await window.electronAPI.store.get('memos'); return { bytes:JSON.stringify(notes).length, image:notes[0].image }; });
+  expect(stats.bytes).toBeLessThan(15000); expect(stats.image).toMatch(/^tomo-image:/);
+  const memo = await openWidget('memo','heavy-0');
+  await expect.poll(() => memo.getByAltText('메모 이미지').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1024);
+  await memo.getByLabel('메모 글자 크기').selectOption('24');
+  await calendar.evaluate(() => { (window as any).patchStats=[]; window.electronAPI.onStorePatched((key,patch)=>{ if(key==='memos') (window as any).patchStats.push(JSON.stringify(patch).length); }); });
+  const editor=memo.getByLabel('메모 내용'); await editor.click();
+  const text='빠르게 입력해도 마지막 글자가 저장됩니다. '.repeat(8);
+  await editor.pressSequentially(text,{delay:1});
+  await expect(editor).toContainText(text.trim());
+  const closed = memo.waitForEvent('close');
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('memoId=heavy-0'))!.close()); await closed;
+  const reopened=await openWidget('memo','heavy-0');
+  await expect(reopened.getByLabel('메모 내용')).toContainText(text.trim());
+  await expect(reopened.getByLabel('메모 글자 크기')).toHaveValue('24');
+  await expect(reopened.getByLabel('메모 내용')).toHaveCSS('font-size','24px');
+  const patches = await calendar.evaluate(()=>(window as any).patchStats);
+  expect(patches.length).toBeGreaterThan(0); expect(patches.length).toBeLessThan(10); expect(patches.every((size:number)=>size<10000)).toBe(true);
+  await info.attach('typing-patch-sizes',{body:JSON.stringify({ compactStoreBytes:stats.bytes, patchSizes:patches }),contentType:'application/json'});
+  fs.writeFileSync(info.outputPath('typing-performance.json'), JSON.stringify({ originalImageBytes:png.length, originalInlineBytes:25*image.length, compactStoreBytes:stats.bytes, patchSizes:patches },null,2));
 });
 test('banner positioning preserves the original image and persists independently', async ({}, info) => {
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#B6D7FF"/><circle cx="400" cy="100" r="80" fill="#ffb6c1"/></svg>';
