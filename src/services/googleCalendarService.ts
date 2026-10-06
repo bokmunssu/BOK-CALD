@@ -1,7 +1,12 @@
-import { Event, GoogleCalendarAuth, GoogleCalendarEvent } from "@types";
+import { Event, GoogleCalendarEvent } from "@types";
 import { electronStore } from "@utils/electronStore";
 
 import { isHolidayCalendar } from "../utils/googleCalendar";
+
+async function calendarRequest(url: string, options: RequestInit = {}): Promise<Response> {
+  const result = await window.electronAPI.googleAccount.request({ url, method: options.method, body: typeof options.body === 'string' ? options.body : undefined });
+  return new Response(result.status === 204 ? null : JSON.stringify(result.data), { status: result.status, headers: { 'Content-Type': 'application/json' } });
+}
 
 const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
@@ -39,24 +44,10 @@ export class GoogleCalendarService {
     return GoogleCalendarService.instance;
   }
 
-  async getStoredAuth(): Promise<GoogleCalendarAuth | null> { return window.electronAPI.googleAccount.auth(); }
-  async refreshAccessToken(_refreshToken: string): Promise<GoogleCalendarAuth> { return window.electronAPI.googleAccount.refresh(); }
-
   /**
    * 연결 해제
    */
   async disconnect(): Promise<void> {
-    const auth = await this.getStoredAuth();
-    if (auth) {
-      // Revoke token
-      await fetch(
-        `https://oauth2.googleapis.com/revoke?token=${auth.access_token}`,
-        {
-          method: "POST", signal: AbortSignal.timeout(10000),
-        }
-      ).catch(() => undefined); // 오프라인에서도 로컬 연결은 해제합니다.
-    }
-
     await window.electronAPI.googleAccount.disconnect();
     await electronStore.delete("googleCalendarAuth");
     await electronStore.delete("googleCalendarSyncState");
@@ -140,22 +131,8 @@ export class GoogleCalendarService {
   /**
    * 사용자 이메일 가져오기
    */
-  async getUserEmail(accessToken?: string): Promise<string> {
-    let token = accessToken;
-
-    if (!token) {
-      const auth = await this.ensureValidToken();
-      token = auth.access_token;
-    }
-
-    const response = await fetch(
-      "https://www.googleapis.com/oauth2/v2/userinfo",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+  async getUserEmail(): Promise<string> {
+    const response = await calendarRequest('https://www.googleapis.com/oauth2/v2/userinfo');
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -182,7 +159,6 @@ export class GoogleCalendarService {
     events: GoogleCalendarEvent[];
     deletedEventIds: string[];
   }> {
-    const auth = await this.ensureValidToken();
 
     // 1. 캘린더 목록 가져오기 (캐시 활용)
     let calendars = (await this.listCalendars()).filter(cal => !isHolidayCalendar(cal.id));
@@ -200,7 +176,6 @@ export class GoogleCalendarService {
     const eventPromises = calendars.map((calendar) =>
       this.fetchEventsFromCalendar(
         calendar,
-        auth.access_token,
         timeMin,
         timeMax
       )
@@ -245,7 +220,6 @@ export class GoogleCalendarService {
    */
   private async fetchEventsFromCalendar(
     calendar: { id: string; summary: string },
-    accessToken: string,
     timeMin?: Date,
     timeMax?: Date
   ): Promise<{
@@ -291,11 +265,10 @@ export class GoogleCalendarService {
           params.append("pageToken", pageToken);
         }
 
-        const response = await fetch(
+        const response = await calendarRequest(
           `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/events?${params.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
             },
           }
         );
@@ -306,7 +279,7 @@ export class GoogleCalendarService {
             console.warn(`⚠️ syncToken invalid for ${calendar.summary}, performing full sync`);
             await this.deleteSyncToken(calendarId);
             // 재귀 호출로 전체 동기화 수행
-            return this.fetchEventsFromCalendar(calendar, accessToken, timeMin, timeMax);
+            return this.fetchEventsFromCalendar(calendar, timeMin, timeMax);
           }
           throw new Error(`Failed to fetch events (HTTP ${response.status})`);
         }
@@ -386,7 +359,6 @@ export class GoogleCalendarService {
     event: Event,
     calendarId: string = "primary"
   ): Promise<string> {
-    const auth = await this.ensureValidToken();
     const googleEvent = this.convertToGoogleEvent(event);
 
     // 로컬 이벤트 ID를 구글 이벤트 extendedProperties.private에 저장
@@ -400,12 +372,11 @@ export class GoogleCalendarService {
     }
 
     const encodedCalendarId = encodeURIComponent(calendarId);
-    const response = await fetch(
+    const response = await calendarRequest(
       `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/events`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${auth.access_token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(googleEvent),
@@ -427,8 +398,7 @@ export class GoogleCalendarService {
    * @param calendarId 캘린더 ID (기본값: "primary")
    */
   async moveEvent(eventId: string, source: string, destination: string): Promise<string> {
-    const auth = await this.ensureValidToken();
-    const response = await fetch(`${CALENDAR_API_BASE}/calendars/${encodeURIComponent(source)}/events/${encodeURIComponent(eventId)}/move?destination=${encodeURIComponent(destination)}`, { method: "POST", headers: { Authorization: `Bearer ${auth.access_token}` }, signal: AbortSignal.timeout(20000) });
+    const response = await calendarRequest(`${CALENDAR_API_BASE}/calendars/${encodeURIComponent(source)}/events/${encodeURIComponent(eventId)}/move?destination=${encodeURIComponent(destination)}`, { method: "POST", headers: { }, signal: AbortSignal.timeout(20000) });
     if (!response.ok) throw new Error(`Google 일정 이동 실패 (${response.status}). 대상 캘린더 쓰기 권한을 확인해 주세요.`);
     return (await response.json()).id;
   }
@@ -438,16 +408,14 @@ export class GoogleCalendarService {
     event: Event,
     calendarId: string = "primary"
   ): Promise<void> {
-    const auth = await this.ensureValidToken();
     const googleEvent = this.convertToGoogleEvent(event);
 
     const encodedCalendarId = encodeURIComponent(calendarId);
-    const response = await fetch(
-      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/events/${googleEventId}`,
+    const response = await calendarRequest(
+      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/events/${encodeURIComponent(googleEventId)}`,
       {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${auth.access_token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(googleEvent),
@@ -468,15 +436,13 @@ export class GoogleCalendarService {
     googleEventId: string,
     calendarId: string = "primary"
   ): Promise<void> {
-    const auth = await this.ensureValidToken();
 
     const encodedCalendarId = encodeURIComponent(calendarId);
-    const response = await fetch(
-      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/events/${googleEventId}`,
+    const response = await calendarRequest(
+      `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}/events/${encodeURIComponent(googleEventId)}`,
       {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${auth.access_token}`,
         },
       }
     );
@@ -586,23 +552,6 @@ export class GoogleCalendarService {
   /**
    * 유효한 토큰 확보 (필요시 갱신)
    */
-  private async ensureValidToken(): Promise<GoogleCalendarAuth> {
-    let auth = await this.getStoredAuth();
-
-    if (!auth) {
-      throw new Error(
-        "Google Calendar not connected. Please authenticate first."
-      );
-    }
-
-    // 토큰 만료 확인 (5분 여유 두기)
-    if (auth.expiry_date < Date.now() + 5 * 60 * 1000) {
-      auth = await this.refreshAccessToken(auth.refresh_token);
-    }
-
-    return auth;
-  }
-
   /**
    * 새로운 캘린더 생성
    * @param summary 캘린더 이름
@@ -615,7 +564,6 @@ export class GoogleCalendarService {
     description?: string,
     timeZone?: string
   ): Promise<string> {
-    const auth = await this.ensureValidToken();
 
     const calendarData = {
       summary,
@@ -623,10 +571,9 @@ export class GoogleCalendarService {
       timeZone: timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 
-    const response = await fetch(`${CALENDAR_API_BASE}/calendars`, {
+    const response = await calendarRequest(`${CALENDAR_API_BASE}/calendars`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${auth.access_token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(calendarData),
@@ -710,11 +657,9 @@ export class GoogleCalendarService {
       accessRole?: string;
     }>
   > {
-    const auth = await this.ensureValidToken();
 
-    const response = await fetch(`${CALENDAR_API_BASE}/users/me/calendarList`, {
+    const response = await calendarRequest(`${CALENDAR_API_BASE}/users/me/calendarList`, {
       headers: {
-        Authorization: `Bearer ${auth.access_token}`,
       },
     });
 
@@ -784,15 +729,13 @@ export class GoogleCalendarService {
    * @param calendarId 구글 캘린더 ID
    */
   async deleteCalendar(calendarId: string): Promise<void> {
-    const auth = await this.ensureValidToken();
 
     const encodedCalendarId = encodeURIComponent(calendarId);
-    const response = await fetch(
+    const response = await calendarRequest(
       `${CALENDAR_API_BASE}/calendars/${encodedCalendarId}`,
       {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${auth.access_token}`,
         },
       }
     );

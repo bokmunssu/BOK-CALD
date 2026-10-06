@@ -3,6 +3,8 @@ import Store from 'electron-store';
 import { createServer, type Server } from 'node:http';
 import { randomBytes, createHash } from 'node:crypto';
 import type { GoogleCalendarAuth } from '../src/types';
+import { GoogleCalendarApi } from './googleCalendarApi';
+import type { CalendarRequest } from '../src/types/calendarApi';
 type Config = { clientId: string; clientSecret: string };
 export class GoogleAccount {
   private store: Store;
@@ -31,6 +33,16 @@ export class GoogleAccount {
     ++this.generation; this.store.delete('tokens'); return this.info();
   }
   auth() { return this.read<GoogleCalendarAuth>('tokens'); }
+  status() { return { connected: !!this.auth() }; }
+  sessionGeneration() { return this.generation; }
+  async revokeAndDisconnect() {
+    const token = this.auth();
+    this.disconnect();
+    if (token) await fetch('https://oauth2.googleapis.com/revoke', {
+      method: 'POST', body: new URLSearchParams({ token: token.refresh_token || token.access_token }),
+      redirect: 'error', signal: AbortSignal.timeout(10000),
+    }).catch(() => undefined);
+  }
   async refresh() {
     if (!this.refreshFlight) {
       const token = this.auth(); if (!token?.refresh_token) throw new Error('구글 계정에 다시 로그인해 주세요.');
@@ -44,7 +56,7 @@ export class GoogleAccount {
   }
   private async exchange(params: Record<string, string>): Promise<GoogleCalendarAuth> {
     const config = this.config();
-    const response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, ...params }), signal: AbortSignal.timeout(20000) });
+    const response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', redirect: 'error', body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, ...params }), signal: AbortSignal.timeout(20000) });
     const data = await response.json();
     if (!response.ok) {
       const messages: Record<string, string> = {
@@ -96,12 +108,12 @@ export class GoogleAccount {
 }
 export function registerGoogleAccount() {
   const service = new GoogleAccount();
+  const calendar = new GoogleCalendarApi(service);
   ipcMain.handle('google-account-info', () => service.info());
-  ipcMain.handle('google-account-configure', (_, value: Config) => service.configure(value));
-  ipcMain.handle('google-account-login', () => service.login());
+  ipcMain.handle('google-account-login', async () => { await service.login(); return service.status(); });
   ipcMain.handle('google-account-cancel', () => service.cancel());
-  ipcMain.handle('google-account-auth', () => service.auth());
-  ipcMain.handle('google-account-refresh', () => service.refresh());
-  ipcMain.handle('google-account-disconnect', () => service.disconnect());
+  ipcMain.handle('google-account-status', () => service.status());
+  ipcMain.handle('google-calendar-request', (_, request: CalendarRequest) => calendar.request(request));
+  ipcMain.handle('google-account-disconnect', () => service.revokeAndDisconnect());
   app.on('before-quit', () => service.cancel());
 }

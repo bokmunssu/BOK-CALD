@@ -7,6 +7,32 @@ import { randomBytes } from 'node:crypto';
 let app: ElectronApplication;
 let calendar: Page;
 
+test('security restrictions block injected scripts, external navigation and untrusted IPC', async ({}, info) => {
+  expect(await calendar.evaluate(() => Object.keys(window.electronAPI.googleAccount))).not.toEqual(expect.arrayContaining(['auth']));
+  expect(await calendar.evaluate(() => 'refresh' in window.electronAPI.googleAccount || 'configure' in window.electronAPI.googleAccount)).toBe(false);
+  await expect(calendar.evaluate(() => window.electronAPI.openExternal('file:///C:/Windows/notepad.exe'))).rejects.toThrow();
+  await expect(calendar.evaluate(() => window.electronAPI.googleAccount.request({url:'https://evil.example/'}))).rejects.toThrow();
+  const pageUrl = calendar.url();
+  await calendar.evaluate(() => {
+    const script = document.createElement('script'); script.textContent = 'window.tomoUnsafeScript = true'; document.body.append(script);
+    location.href = 'https://example.com/';
+  });
+  await expect.poll(() => calendar.url()).toBe(pageUrl);
+  expect(await calendar.evaluate(() => (window as any).tomoUnsafeScript)).toBeUndefined();
+  const nextWindow = app.waitForEvent('window');
+  const foreignFile = info.outputPath('untrusted.html');
+  fs.writeFileSync(foreignFile, '<html><body>Untrusted page test</body></html>');
+  await app.evaluate(async ({BrowserWindow, app}, file) => {
+    const preload = app.getAppPath() + '/dist-electron/preload.js';
+    const win = new BrowserWindow({show:false,webPreferences:{preload,contextIsolation:true,nodeIntegration:false,sandbox:true}});
+    await win.loadFile(file);
+  }, foreignFile);
+  const foreign = await nextWindow;
+  await expect.poll(() => foreign.evaluate(() => !!window.electronAPI)).toBe(true);
+  await expect(foreign.evaluate(() => window.electronAPI.store.get('memos'))).rejects.toThrow('허용되지 않은 앱 접근');
+  await app.evaluate(({BrowserWindow}) => { BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('untrusted.html'))?.destroy(); });
+});
+
 test('connected rows do not clip bottom schedules in a six-week small calendar',async({},info)=>{
   await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(760,480));
   await calendar.evaluate(async()=>{
@@ -38,7 +64,7 @@ test('holiday speech bubble follows hover, click and keyboard focus without taki
   await calendar.getByRole('button',{name:'오늘',exact:true}).hover();await expect(calendar.getByRole('tooltip')).toHaveCount(0);
   await date.click();await expect(calendar.getByRole('tooltip')).toBeVisible();
   await calendar.getByRole('button',{name:'오늘',exact:true}).click();await expect(calendar.getByRole('tooltip')).toHaveCount(0);
-  await date.focus();await expect(calendar.getByRole('tooltip')).toBeVisible();await calendar.keyboard.press('Tab');await expect(calendar.getByRole('tooltip')).toHaveCount(0);
+  await date.focus();await expect(calendar.getByRole('tooltip')).toBeVisible();await calendar.keyboard.press('Tab');await expect(date).not.toHaveAttribute('aria-describedby', /.+/);
   await calendar.getByLabel('한국 공휴일 표시').uncheck();await expect(date).toHaveCount(0);await expect(calendar.getByRole('tooltip')).toHaveCount(0);
 });
 
@@ -113,7 +139,8 @@ test('stored holiday subscriptions are hidden while similarly named user schedul
   await calendar.reload();await expect(calendar.getByText('가져온 공휴일 시험',{exact:true})).toHaveCount(0);await expect(calendar.getByText('내 공휴일 약속',{exact:true}).first()).toBeVisible();
 });
 test.beforeEach(async ({}, info) => {
-  const data = path.resolve(info.outputPath('user-data'));
+  // Keep image paths below Windows MAX_PATH even when test titles are long.
+  const data = path.resolve('test-results/profiles', randomBytes(8).toString('hex'));
   fs.mkdirSync(data, { recursive: true });
   app = await electron.launch({ ...(process.env.TOMO_E2E_EXECUTABLE ? { executablePath: process.env.TOMO_E2E_EXECUTABLE, args: [] } : { args: ['.'] }), env: { ...process.env, NODE_ENV: 'production', TOMO_TEST_USER_DATA: data } });
   calendar = await app.firstWindow();

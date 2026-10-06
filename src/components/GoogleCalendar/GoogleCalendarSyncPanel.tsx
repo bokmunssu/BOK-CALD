@@ -74,10 +74,8 @@ export const GoogleCalendarSyncPanel: React.FC<
   const handleConnect = async () => {
     setIsConnecting(true); setConnectError('');
     try {
-      const auth = await window.electronAPI.googleAccount.login();
-      const userEmail = await googleCalendarService.getUserEmail(
-        auth.access_token
-      );
+      await window.electronAPI.googleAccount.login();
+      const userEmail = await googleCalendarService.getUserEmail();
 
       setSyncState({
         isConnected: true,

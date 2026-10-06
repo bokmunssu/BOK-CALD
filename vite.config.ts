@@ -7,6 +7,7 @@ import path from 'path';
 export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [
+    { name: 'development-csp', apply: 'serve', transformIndexHtml: html => html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '') },
     react(),
     electron([
       {

@@ -6,12 +6,26 @@ vi.mock('electron-store', () => ({ default: class { get(k: string) { return cach
 vi.mock('electron', () => ({ app: { on: vi.fn() }, ipcMain: { handle: vi.fn() }, shell: { openExternal: vi.fn() }, safeStorage: {
   isEncryptionAvailable: () => true, encryptString: (s: string) => Buffer.from('encrypted:'+s), decryptString: (b: Buffer) => b.toString().slice(10)
 } }));
-import { shell } from 'electron';
-import { GoogleAccount } from '../../electron/googleAccount';
+import { shell, ipcMain } from 'electron';
+import { GoogleAccount, registerGoogleAccount } from '../../electron/googleAccount';
 function callback(url: string) { return new Promise<number>(resolve => { get(url, res => { res.resume(); res.on('end', () => resolve(res.statusCode!)); }); }); }
 function setup() { const a = new GoogleAccount(); a.configure({clientId:'test.apps.googleusercontent.com',clientSecret:'desktop-test'}); return a; }
 beforeEach(() => { cache.clear(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 describe('Google desktop OAuth', () => {
+  it('never exposes tokens from registered login or connection status handlers', async () => {
+    const a = setup();
+    cache.set('tokens', Buffer.from('encrypted:'+JSON.stringify({access_token:'private-access',refresh_token:'private-refresh'})).toString('base64'));
+    const login = vi.spyOn(GoogleAccount.prototype, 'login').mockResolvedValue(a.auth()!);
+    registerGoogleAccount();
+    const handlers = new Map(vi.mocked(ipcMain.handle).mock.calls);
+    const result = await handlers.get('google-account-login')!({} as any);
+    expect(result).toEqual({connected:true});
+    expect(JSON.stringify(result)).not.toContain('private-');
+    expect(handlers.has('google-account-auth')).toBe(false);
+    expect(handlers.has('google-account-refresh')).toBe(false);
+    expect(handlers.has('google-account-configure')).toBe(false);
+    login.mockRestore();
+  });
   it('requests Tasks permissions without Calendar permissions for the Tasks login', async () => {
     const a = setup(); vi.mocked(shell.openExternal).mockImplementation(async address => { const scopes=new URL(address).searchParams.get('scope')!.split(' ');expect(scopes).toContain('https://www.googleapis.com/auth/tasks');expect(scopes.some(s=>s.includes('/calendar'))).toBe(false);a.cancel(); });
     await expect(a.login(true)).rejects.toThrow('취소');

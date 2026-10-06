@@ -46,4 +46,5 @@ claude
 coverage/
 playwright-report/
 test-results/
+test-results-packaged/
 *.tsbuildinfo

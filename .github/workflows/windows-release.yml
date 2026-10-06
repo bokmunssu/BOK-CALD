@@ -8,6 +8,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     env:
@@ -15,13 +16,17 @@ jobs:
       VITE_TOMO_GOOGLE_CLIENT_ID: ${{ vars.VITE_TOMO_GOOGLE_CLIENT_ID }}
       VITE_TOMO_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_TOMO_GOOGLE_CLIENT_SECRET }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
           package-manager-cache: false
       - run: npm install --global yarn@1.22.22
       - run: yarn install --frozen-lockfile
+      - name: 배포 의존성 보안 검사
+        run: yarn audit --groups dependencies
       - run: yarn test:run
       - name: 배포용 로그인 설정 확인
         if: github.event_name == 'release'
@@ -29,7 +34,7 @@ jobs:
       - run: yarn prebuild
       - run: yarn electron-builder --win nsis portable --x64 --publish never
       - name: 실행 파일 보관
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: TOMO-CALENDAR-Windows-x64
           path: |

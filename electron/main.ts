@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, Notification, shell, session, protocol, net } from "electron";
 import { pathToFileURL } from 'node:url';
 import { ImageAssets } from './imageAssets';
+import { guardIpcHandlers, protectContents, safeExternalUrl, trustedAppPage } from './security';
 import { guardEditFlush } from './editFlush';
 import path from "path";
 import os from "os";
@@ -13,11 +14,15 @@ import { registerWidgets } from './widgets';
 import { mergeItems, applyCollectionPatch, type CollectionPatch } from '../src/utils/workspace';
 
 // Tests use a separate directory; never touch the user's real calendar data.
+guardIpcHandlers();
+app.on('web-contents-created', (_, contents) => protectContents(contents));
 app.setName('TOMO CALENDAR');
 app.setPath('userData', process.env.TOMO_TEST_USER_DATA || process.env.BOK_CALD_TEST_USER_DATA || path.join(app.getPath('appData'), 'TOMO CALENDAR'));
 app.setAppUserModelId('io.github.bokmunssu.tomo.calendar');
 // Electron Store 초기화
 const store = new Store();
+// Tokens from older renderer-based releases are no longer used or exposed.
+store.delete('googleCalendarAuth');
 const images = new ImageAssets(path.join(app.getPath('userData'), 'images'));
 protocol.registerSchemesAsPrivileged([{ scheme: 'tomo-image', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 // One-time migration keeps image bytes out of every later synchronous config write.
@@ -73,7 +78,7 @@ function createWindow() {
       nodeIntegration: false,
       // 폰트 렌더링 최적화
       webgl: true,
-      experimentalFeatures: true,
+      sandbox: true,
     },
     // Windows에서는 menu hide, macOS에서는 hidden 사용
     ...(isWindows ? { frame:true, autoHideMenuBar: true  } : { titleBarStyle: "hidden" }),
@@ -131,7 +136,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   protocol.handle('tomo-image', request => { const file = images.resolve(request.url); return file ? net.fetch(pathToFileURL(file).toString()) : new Response('Not found', { status: 404 }); });
-  const trustedPage = (url: string) => url.startsWith('file:') || url.startsWith('http://localhost:5173/');
+  const trustedPage = trustedAppPage;
   session.defaultSession.setPermissionCheckHandler((contents, permission) => String(permission) === 'local-fonts' && !!contents && trustedPage(contents.getURL()));
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(String(permission) === 'local-fonts' && trustedPage(contents.getURL())));
   registerUpdater();
@@ -335,7 +340,7 @@ ipcMain.handle("resize-window", (_, width: number, height: number) => {
 });
 
 ipcMain.handle("open-external", (_, url: string) => {
-  return shell.openExternal(url);
+  return shell.openExternal(safeExternalUrl(url));
 });
 
 // 앱 버전 가져오기 (package.json에서)
