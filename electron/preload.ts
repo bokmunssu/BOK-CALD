@@ -92,9 +92,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   }) => ipcRenderer.invoke("show-notification", options),
 
   googleAccount: {
-    info: () => ipcRenderer.invoke('google-account-info'), configure: (value: unknown) => ipcRenderer.invoke('google-account-configure', value),
-    login: () => ipcRenderer.invoke('google-account-login'), cancel: () => ipcRenderer.invoke('google-account-cancel'), auth: () => ipcRenderer.invoke('google-account-auth'),
-    refresh: () => ipcRenderer.invoke('google-account-refresh'), disconnect: () => ipcRenderer.invoke('google-account-disconnect'),
+    info: () => ipcRenderer.invoke('google-account-info'),
+    login: () => ipcRenderer.invoke('google-account-login'), cancel: () => ipcRenderer.invoke('google-account-cancel'), status: () => ipcRenderer.invoke('google-account-status'),
+    request: (value: unknown) => ipcRenderer.invoke('google-calendar-request', value), disconnect: () => ipcRenderer.invoke('google-account-disconnect'),
   },
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 

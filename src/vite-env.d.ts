@@ -5,9 +5,10 @@ interface ElectronAPI {
 
   googleAccount: {
     info: () => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
-    configure: (value: { clientId: string; clientSecret: string }) => Promise<{ configured: boolean; clientId: string; personal: boolean }>;
-    login: () => Promise<import('./types').GoogleCalendarAuth>; cancel: () => Promise<void>;
-    auth: () => Promise<import('./types').GoogleCalendarAuth | null>; refresh: () => Promise<import('./types').GoogleCalendarAuth>; disconnect: () => Promise<void>;
+    login: () => Promise<{ connected: boolean }>; cancel: () => Promise<void>;
+    status: () => Promise<{ connected: boolean }>;
+    request: (value: import('./types/calendarApi').CalendarRequest) => Promise<import('./types/calendarApi').CalendarResponse>;
+    disconnect: () => Promise<void>;
   };
   system: { fonts: () => Promise<string[]>; windows: () => Promise<import('./utils/workspace').WindowChoice[]> };
   googleTasks: {

@@ -18,10 +18,10 @@ beforeEach(() => {
   vi.stubGlobal("window", {
     electronAPI: {
       googleAccount: {
-        auth: async () => ({
-          access_token: "test",
-          expiry_date: Date.now() + 3600000,
-        }),
+        request: async ({url, method, body}: {url: string; method?: string; body?: string}) => {
+          const response = await fetch(url, { method, body });
+          return { status: response.status, data: await response.json() };
+        },
       },
     },
   });
